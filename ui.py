@@ -1134,17 +1134,27 @@ class PlaygroundScreen(BaseScreen):
         self.query_one("#pg-input", Input).focus()
 
     def _populate_files(self) -> None:
-        """Populate file list - synchronous is fine for a few files."""
         flist = self.query_one("#file-list", ListView)
         flist.clear()
+
         self._file_map = {}
 
         for f in self.app.playground_engine.list_workspace_files():
-            label = f"  [cyan]{f['name']}[/]  [grey50]{f['lines']} lines[/]"
-            # Use the actual filename as ID (replace dots with underscores for Textual compatibility)
-            safe_id = f['name'].replace('.', '_')
-            self._file_map[safe_id] = f['name']
-            flist.append(ListItem(Label(Text.from_markup(label)), id=f"file_{safe_id}"))
+            label = (
+                f"  [cyan]{f['name']}[/]  "
+                f"[grey50]{f['lines']} lines[/]"
+            )
+
+            safe_id = f["name"].replace(".", "_")
+
+            self._file_map[safe_id] = f["name"]
+
+            flist.append(
+                ListItem(
+                    Label(Text.from_markup(label)),
+                    id=f"file_{safe_id}"
+                )
+            )
 
     def _populate_templates(self) -> None:
         """Populate template list - synchronous is fine."""
@@ -1157,21 +1167,47 @@ class PlaygroundScreen(BaseScreen):
 
     @on(ListView.Selected, "#file-list")
     def file_selected(self, event: ListView.Selected) -> None:
-        safe_id = event.item.id.replace("file-", "") if event.item.id else None
-        if not safe_id:
+        """Handle workspace file selection and preview."""
+
+        if not event.item or not event.item.id:
             return
 
-        # Get actual filename from mapping
-        actual_name = self._file_map.get(safe_id, safe_id.replace('_', '.'))
+        # IDs are created as: file_<safe_filename>
+        if not event.item.id.startswith("file_"):
+            return
+
+        # Remove prefix correctly
+        safe_id = event.item.id[len("file_"):]
+
+        # Get original filename from mapping
+        actual_name = self._file_map.get(safe_id)
+
+        if not actual_name:
+            output = self.query_one("#pg-output", RichLog)
+            output.write(
+                Text.from_markup(
+                    f"[red]Error:[/] Could not resolve filename for ID '{safe_id}'"
+                )
+            )
+            return
 
         output = self.query_one("#pg-output", RichLog)
+
         output.write(Text.from_markup(f"\n[dim]{'-' * 60}[/]"))
         output.write(Text.from_markup(f"[bold]  {actual_name}[/]"))
         output.write(Text.from_markup(f"[dim]{'-' * 60}[/]"))
-        preview = self.app.playground_engine.get_file_preview(actual_name, 20)
+
+        preview = self.app.playground_engine.get_file_preview(
+            actual_name,
+            20
+        )
+
         for line in preview.splitlines():
             output.write(line)
+
         output.write(Text.from_markup(f"[dim]{'-' * 60}[/]\n"))
+
+        # Auto-fill command input
         inp = self.query_one("#pg-input", Input)
         inp.value = f"cat {actual_name}"
         inp.focus()
