@@ -1,0 +1,319 @@
+{
+  "missions": [
+    {
+      "id": "mission_sysadmin",
+      "title": "Junior Linux Administrator",
+      "icon": "🖥️",
+      "description": "You've just joined a startup as a Linux sysadmin. The servers are under load and the team needs answers fast.",
+      "difficulty": "beginner",
+      "xp_reward": 500,
+      "badge": "🎖️ Sysadmin Recruit",
+      "color": "#00d4ff",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Server Health Check",
+          "objective": "Count how many ERROR lines are in server.log",
+          "dataset": "server.log",
+          "solution": "grep -c 'ERROR' server.log",
+          "hint": "Use grep -c to count matching lines",
+          "xp": 100
+        },
+        {
+          "stage": 2,
+          "title": "Identify Top Errors",
+          "objective": "List unique error messages and their frequency",
+          "dataset": "server.log",
+          "solution": "grep 'ERROR' server.log | awk '{print $NF}' | sort | uniq -c | sort -rn",
+          "hint": "Extract last field, sort, count, re-sort",
+          "xp": 150
+        },
+        {
+          "stage": 3,
+          "title": "Timeline the Incident",
+          "objective": "Show errors grouped by hour of day",
+          "dataset": "server.log",
+          "solution": "grep 'ERROR' server.log | awk '{print $2}' | cut -d: -f1 | sort | uniq -c",
+          "hint": "Extract timestamp field, get hour component",
+          "xp": 200
+        },
+        {
+          "stage": 4,
+          "title": "Generate Report",
+          "objective": "Show total errors and top 3 unique error types",
+          "dataset": "server.log",
+          "solution": "echo \"Total: $(grep -c ERROR server.log)\"; grep ERROR server.log | awk '{print $NF}' | sort | uniq -c | sort -rn | head -3",
+          "hint": "Use command substitution $() to embed results",
+          "xp": 250
+        }
+      ]
+    },
+    {
+      "id": "mission_webops",
+      "title": "Web Operations Engineer",
+      "icon": "🌐",
+      "description": "The e-commerce site is slow and users are complaining. Investigate the Apache logs to find what's wrong.",
+      "difficulty": "intermediate",
+      "xp_reward": 700,
+      "badge": "🌐 Web Ops Pro",
+      "color": "#7c3aed",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Traffic Overview",
+          "objective": "Show total request count and unique visitor count from apache.log",
+          "dataset": "apache.log",
+          "solution": "echo \"Requests: $(wc -l < apache.log)\"; echo \"Unique IPs: $(awk '{print $1}' apache.log | sort -u | wc -l)\"",
+          "hint": "wc -l for total, then extract IPs, deduplicate, count",
+          "xp": 120
+        },
+        {
+          "stage": 2,
+          "title": "Error Rate",
+          "objective": "Calculate the percentage of 5xx errors in total traffic",
+          "dataset": "apache.log",
+          "solution": "awk '{t++; if($9>=500) e++} END {printf \"Error rate: %.1f%%\\n\", e/t*100}' apache.log",
+          "hint": "Count total and 500+ errors, compute ratio",
+          "xp": 150
+        },
+        {
+          "stage": 3,
+          "title": "Top Endpoints",
+          "objective": "Find the 5 most requested URL paths",
+          "dataset": "apache.log",
+          "solution": "awk '{print $7}' apache.log | sort | uniq -c | sort -rn | head -5",
+          "hint": "Field 7 is the URL path",
+          "xp": 180
+        },
+        {
+          "stage": 4,
+          "title": "Bot Detection",
+          "objective": "List IPs making more than 50 requests (potential bots)",
+          "dataset": "apache.log",
+          "solution": "awk '{c[$1]++} END {for(ip in c) if(c[ip]>50) print c[ip], ip}' apache.log | sort -rn",
+          "hint": "Count per IP in awk array, filter in END block",
+          "xp": 200
+        },
+        {
+          "stage": 5,
+          "title": "Incident Report",
+          "objective": "Show 404 error count and top 3 missing URLs",
+          "dataset": "apache.log",
+          "solution": "echo \"404s: $(awk '$9==404' apache.log | wc -l)\"; awk '$9==404 {print $7}' apache.log | sort | uniq -c | sort -rn | head -3",
+          "hint": "Filter on field 9 == 404, then count URLs",
+          "xp": 250
+        }
+      ]
+    },
+    {
+      "id": "mission_vlsi_pe",
+      "title": "Physical Design Engineer",
+      "icon": "⚡",
+      "description": "The chip is failing timing closure. Analyze EDA reports to find violations and generate a fix-priority list.",
+      "difficulty": "advanced",
+      "xp_reward": 900,
+      "badge": "⚡ Timing Wizard",
+      "color": "#dc2626",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Violation Count",
+          "objective": "Count total timing violations in timing.rpt",
+          "dataset": "timing.rpt",
+          "solution": "grep -c 'VIOLATED' timing.rpt",
+          "hint": "grep -c counts matching lines directly",
+          "xp": 150
+        },
+        {
+          "stage": 2,
+          "title": "Worst Paths",
+          "objective": "List the 5 worst violated paths (most negative slack)",
+          "dataset": "timing.rpt",
+          "solution": "grep 'VIOLATED' timing.rpt | sort -t'|' -k3 -n | head -5",
+          "hint": "Sort numerically on the slack column",
+          "xp": 200
+        },
+        {
+          "stage": 3,
+          "title": "Clock Inventory",
+          "objective": "List all clock names defined in constraints.sdc",
+          "dataset": "constraints.sdc",
+          "solution": "grep 'create_clock' constraints.sdc | grep -oE '\\-name [^ ]+' | awk '{print $2}'",
+          "hint": "Extract -name argument from create_clock lines",
+          "xp": 200
+        },
+        {
+          "stage": 4,
+          "title": "Library Census",
+          "objective": "Count total standard cells in liberty.lib",
+          "dataset": "liberty.lib",
+          "solution": "grep -c 'cell (' liberty.lib",
+          "hint": "Count lines matching the cell definition pattern",
+          "xp": 150
+        },
+        {
+          "stage": 5,
+          "title": "Synthesis Summary",
+          "objective": "Extract area and timing information from synthesis.log",
+          "dataset": "synthesis.log",
+          "solution": "grep -E 'Area|Timing|Slack|Frequency' synthesis.log | head -20",
+          "hint": "Search for key metric keywords in the synthesis report",
+          "xp": 200
+        }
+      ]
+    },
+    {
+      "id": "mission_data_analyst",
+      "title": "HR Data Analyst",
+      "icon": "📊",
+      "description": "The HR director needs a full workforce report before the board meeting. You have 10 minutes and only a terminal.",
+      "difficulty": "intermediate",
+      "xp_reward": 600,
+      "badge": "📊 Data Wrangler",
+      "color": "#059669",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Headcount",
+          "objective": "Count total number of employees (excluding header)",
+          "dataset": "employees.csv",
+          "solution": "tail -n +2 employees.csv | wc -l",
+          "hint": "Skip header with tail -n +2, then count",
+          "xp": 100
+        },
+        {
+          "stage": 2,
+          "title": "Department Breakdown",
+          "objective": "Show employee count per department, sorted largest first",
+          "dataset": "employees.csv",
+          "solution": "awk -F',' 'NR>1 {print $3}' employees.csv | sort | uniq -c | sort -rn",
+          "hint": "Column 3 is department. Use NR>1 to skip header.",
+          "xp": 150
+        },
+        {
+          "stage": 3,
+          "title": "Salary Statistics",
+          "objective": "Calculate min, max, and average salary",
+          "dataset": "employees.csv",
+          "solution": "awk -F',' 'NR>1 {s+=$4; if(min==\"\"||$4<min)min=$4; if($4>max)max=$4} END {printf \"Min: %s  Max: %s  Avg: %.0f\\n\", min, max, s/(NR-1)}' employees.csv",
+          "hint": "Track running min, max, and sum. Divide sum by count in END.",
+          "xp": 200
+        },
+        {
+          "stage": 4,
+          "title": "High Earners",
+          "objective": "List employees earning over $100,000, sorted by salary descending",
+          "dataset": "employees.csv",
+          "solution": "awk -F',' 'NR>1 && $4>100000 {print $4, $2, $3}' employees.csv | sort -rn",
+          "hint": "Filter where field 4 > 100000, then sort",
+          "xp": 150
+        }
+      ]
+    },
+    {
+      "id": "mission_security",
+      "title": "Security Analyst",
+      "icon": "🔐",
+      "description": "The security team suspects a brute-force attack and data exfiltration attempt. Investigate the logs.",
+      "difficulty": "advanced",
+      "xp_reward": 800,
+      "badge": "🛡️ Security Analyst",
+      "color": "#b45309",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Auth Failures",
+          "objective": "Count authentication failures in syslog.log",
+          "dataset": "syslog.log",
+          "solution": "grep -ic 'error\\|fail\\|denied' syslog.log",
+          "hint": "Use grep -ic for case-insensitive count of failure keywords",
+          "xp": 150
+        },
+        {
+          "stage": 2,
+          "title": "Suspicious IPs",
+          "objective": "Find IPs with more than 20 requests in apache.log",
+          "dataset": "apache.log",
+          "solution": "awk '{c[$1]++} END {for(ip in c) if(c[ip]>20) print c[ip], ip}' apache.log | sort -rn",
+          "hint": "Count per IP, filter those over threshold",
+          "xp": 180
+        },
+        {
+          "stage": 3,
+          "title": "Error Pattern",
+          "objective": "Show hourly distribution of 4xx and 5xx errors from apache.log",
+          "dataset": "apache.log",
+          "solution": "awk '$9>=400 {print $4}' apache.log | grep -oE '[0-9]+:[0-9]+' | cut -d: -f1 | sort | uniq -c",
+          "hint": "Filter errors, extract hour from timestamp",
+          "xp": 220
+        },
+        {
+          "stage": 4,
+          "title": "Exfil Detection",
+          "objective": "Find the largest response sizes in apache.log (field 10) — data exfiltration sends large responses",
+          "dataset": "apache.log",
+          "solution": "awk '{print $10, $1, $7}' apache.log | sort -rn | head -10",
+          "hint": "Field 10 is bytes sent. Sort descending to find largest.",
+          "xp": 250
+        }
+      ]
+    },
+    {
+      "id": "mission_pipeline_architect",
+      "title": "Pipeline Architect",
+      "icon": "🏗️",
+      "description": "Build a complete monitoring dashboard using only command-line pipes. Each stage adds a new metric.",
+      "difficulty": "expert",
+      "xp_reward": 1200,
+      "badge": "🏗️ Pipeline Architect",
+      "color": "#4f46e5",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Traffic Metrics",
+          "objective": "In one pipeline: total requests, unique IPs, and peak hour from apache.log",
+          "dataset": "apache.log",
+          "solution": "echo \"Requests: $(wc -l < apache.log)\"; echo \"IPs: $(awk '{print $1}' apache.log | sort -u | wc -l)\"; echo \"Peak hour: $(awk '{print $4}' apache.log | grep -oE '[0-9]+:[0-9]+' | cut -d: -f1 | sort | uniq -c | sort -rn | head -1)\"",
+          "hint": "Use command substitution $() for each metric",
+          "xp": 200
+        },
+        {
+          "stage": 2,
+          "title": "Error Dashboard",
+          "objective": "Show count of each HTTP error code (400+) sorted by frequency",
+          "dataset": "apache.log",
+          "solution": "awk '$9>=400 {print $9}' apache.log | sort | uniq -c | sort -rn",
+          "hint": "Filter on field 9 >= 400, count each distinct code",
+          "xp": 200
+        },
+        {
+          "stage": 3,
+          "title": "Bandwidth Report",
+          "objective": "Calculate total MB transferred and average MB per request",
+          "dataset": "apache.log",
+          "solution": "awk '{t+=$10; n++} END {printf \"Total: %.1fMB  Avg: %.3fMB\\n\", t/1048576, t/n/1048576}' apache.log",
+          "hint": "Sum field 10 (bytes), divide by 1048576 for MB",
+          "xp": 250
+        },
+        {
+          "stage": 4,
+          "title": "URL Performance",
+          "objective": "Top 5 URLs and their total bytes served",
+          "dataset": "apache.log",
+          "solution": "awk '{bytes[$7]+=$10} END {for(u in bytes) print bytes[u], u}' apache.log | sort -rn | head -5",
+          "hint": "Use awk array indexed by URL, accumulate bytes",
+          "xp": 300
+        },
+        {
+          "stage": 5,
+          "title": "Complete Dashboard",
+          "objective": "Generate a formatted summary: header, metrics, error table, top 3 URLs",
+          "dataset": "apache.log",
+          "solution": "printf '=== Server Dashboard ===\\n'; printf 'Requests: %s\\n' $(wc -l < apache.log); awk '$9>=400{e[$9]++} END{print \"\\n--- Errors ---\"; for(c in e) printf \"%s: %d\\n\", c, e[c]}' apache.log | sort; echo; echo '--- Top URLs ---'; awk '{c[$7]++} END {for(u in c) print c[u], u}' apache.log | sort -rn | head -3",
+          "hint": "Combine all previous steps with printf for formatting",
+          "xp": 450
+        }
+      ]
+    }
+  ]
+}

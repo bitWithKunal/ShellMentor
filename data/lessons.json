@@ -1,0 +1,1176 @@
+{
+  "tracks": [
+    {
+      "id": "linux_fundamentals",
+      "name": "Linux Fundamentals",
+      "icon": "🐧",
+      "color": "#00d4ff",
+      "description": "Master the core text-processing tools every Linux user needs.",
+      "order": 1,
+      "lessons": [
+        {
+          "id": "grep_basics",
+          "title": "grep: Search Like a Pro",
+          "icon": "🔍",
+          "difficulty": "beginner",
+          "xp_reward": 100,
+          "estimated_minutes": 20,
+          "tags": [
+            "grep",
+            "search",
+            "text"
+          ],
+          "introduction": "grep (Global Regular Expression Print) is one of the most powerful text search tools in Linux. It searches for patterns in files and streams, making it indispensable for log analysis, code review, and data extraction.",
+          "purpose": "Search for patterns in text files and streams",
+          "syntax": "grep [OPTIONS] PATTERN [FILE...]",
+          "sections": [
+            {
+              "title": "Basic Search",
+              "content": "The simplest use of grep is searching for a literal string in a file.",
+              "example": "grep 'ERROR' server.log",
+              "explanation": "Prints every line in server.log that contains the word ERROR"
+            },
+            {
+              "title": "Case-Insensitive Search",
+              "content": "Use -i to ignore case differences.",
+              "example": "grep -i 'error' server.log",
+              "explanation": "Matches ERROR, error, Error, eRrOr — all of them"
+            },
+            {
+              "title": "Show Line Numbers",
+              "content": "Use -n to display line numbers of matches.",
+              "example": "grep -n 'CRITICAL' server.log",
+              "explanation": "Shows exactly where critical events occur in your log"
+            },
+            {
+              "title": "Count Matches",
+              "content": "Use -c to count matching lines instead of printing them.",
+              "example": "grep -c 'ERROR' server.log",
+              "explanation": "Returns a single count — great for quick health checks"
+            },
+            {
+              "title": "Invert Match",
+              "content": "Use -v to show lines that do NOT match.",
+              "example": "grep -v '#' server.log",
+              "explanation": "Strips comment lines from config files or logs"
+            },
+            {
+              "title": "Extended Regex",
+              "content": "Use -E to enable | (OR), + and ? quantifiers.",
+              "example": "grep -E 'ERROR|WARN|CRITICAL' server.log",
+              "explanation": "Matches any of the three severity levels in one pass"
+            },
+            {
+              "title": "Context Lines",
+              "content": "Use -A, -B, -C to show surrounding context lines.",
+              "example": "grep -C 3 'FATAL' server.log",
+              "explanation": "Shows 3 lines before and after each FATAL — vital for debugging"
+            },
+            {
+              "title": "Extract Only Match",
+              "content": "Use -o to print only the matched portion, not the whole line.",
+              "example": "grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' apache.log",
+              "explanation": "Extracts just the IP addresses — nothing else"
+            }
+          ],
+          "common_mistakes": [
+            "Forgetting -E for extended regex (| and + won't work without it)",
+            "Using grep on binary files — use grep -a to treat as text",
+            "Case sensitivity — always consider -i if unsure"
+          ],
+          "best_practices": [
+            "Chain grep calls: grep 'ERROR' log | grep -v 'test' to narrow results",
+            "Use --color=auto for readable highlighted output",
+            "Combine -l (list files) with -r for codebase-wide searches"
+          ],
+          "exercises": [
+            {
+              "id": "ex_grep_1",
+              "prompt": "Count how many ERROR lines are in server.log",
+              "solution": "grep -c 'ERROR' server.log",
+              "hint": "Use -c flag",
+              "xp": 20
+            },
+            {
+              "id": "ex_grep_2",
+              "prompt": "Show all lines NOT containing 'INFO' in server.log",
+              "solution": "grep -v 'INFO' server.log",
+              "hint": "Invert with -v",
+              "xp": 20
+            },
+            {
+              "id": "ex_grep_3",
+              "prompt": "Extract only IP addresses from apache.log",
+              "solution": "grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' apache.log | sort -u",
+              "hint": "Use -oE with an IP regex pattern",
+              "xp": 30
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "Which grep flag makes the search case-insensitive?",
+              "options": [
+                "-i",
+                "-c",
+                "-v",
+                "-n"
+              ],
+              "answer": "-i",
+              "explanation": "-i stands for ignore-case. -c counts, -v inverts, -n shows line numbers.",
+              "xp": 10
+            },
+            {
+              "id": "q2",
+              "type": "multiple_choice",
+              "question": "How do you count matching lines with grep?",
+              "options": [
+                "grep -c",
+                "grep -n",
+                "grep -v",
+                "grep -o"
+              ],
+              "answer": "grep -c",
+              "explanation": "-c (count) returns only the number of matching lines.",
+              "xp": 10
+            },
+            {
+              "id": "q3",
+              "type": "fill_in_blank",
+              "question": "To search for 'error' OR 'warning' in a file, you need flag ___",
+              "options": [],
+              "answer": "-E",
+              "explanation": "-E enables extended regular expressions which support the | alternation operator.",
+              "xp": 10
+            }
+          ]
+        },
+        {
+          "id": "sed_basics",
+          "title": "sed: Stream Editing Mastery",
+          "icon": "✏️",
+          "difficulty": "beginner",
+          "xp_reward": 120,
+          "estimated_minutes": 25,
+          "tags": [
+            "sed",
+            "replace",
+            "transform"
+          ],
+          "introduction": "sed (Stream EDitor) processes text line by line, applying editing commands. It's perfect for find-and-replace, deletion, insertion, and complex text transformations — without opening a text editor.",
+          "purpose": "Edit text streams non-interactively — substitute, delete, insert",
+          "syntax": "sed [OPTIONS] 'SCRIPT' [FILE...]",
+          "sections": [
+            {
+              "title": "Basic Substitution",
+              "content": "The s command substitutes text: s/OLD/NEW/ replaces first match per line, s/OLD/NEW/g replaces all.",
+              "example": "sed 's/ERROR/ALERT/g' server.log",
+              "explanation": "Replaces every occurrence of ERROR with ALERT in every line"
+            },
+            {
+              "title": "Delete Lines",
+              "content": "The d command deletes lines matching a pattern.",
+              "example": "sed '/^#/d' server.log",
+              "explanation": "Removes all comment lines (starting with #)"
+            },
+            {
+              "title": "Print Specific Lines",
+              "content": "Use -n with p to print only specified lines.",
+              "example": "sed -n '10,20p' server.log",
+              "explanation": "Prints only lines 10 through 20 — like a precise head/tail"
+            },
+            {
+              "title": "In-Place Editing",
+              "content": "Use -i to edit files in-place (WARNING: destructive!).",
+              "example": "sed -i 's/localhost/127.0.0.1/g' config.txt",
+              "explanation": "Modifies the actual file. Use -i.bak to keep a backup."
+            },
+            {
+              "title": "Address Ranges",
+              "content": "Apply commands only to lines matching a range or pattern.",
+              "example": "sed '/START/,/END/d' file.txt",
+              "explanation": "Deletes everything between START and END markers"
+            },
+            {
+              "title": "Multiple Commands",
+              "content": "Chain multiple sed commands with -e or semicolons.",
+              "example": "sed -e 's/foo/bar/g' -e '/^$/d' file.txt",
+              "explanation": "Replace foo with bar AND remove blank lines in one pass"
+            }
+          ],
+          "common_mistakes": [
+            "Forgetting /g flag — without it, only the first match per line is replaced",
+            "Using -i without a backup on important files",
+            "Special characters in patterns need escaping: . * [ \\ ^ $ need \\"
+          ],
+          "best_practices": [
+            "Test without -i first, add it only when output looks correct",
+            "Use single quotes around sed expressions to prevent shell interpretation",
+            "Combine with grep -n first to find line numbers before editing"
+          ],
+          "exercises": [
+            {
+              "id": "ex_sed_1",
+              "prompt": "Replace all commas with pipes in employees.csv (print to stdout)",
+              "solution": "sed 's/,/|/g' employees.csv",
+              "hint": "Use s/,/|/g",
+              "xp": 20
+            },
+            {
+              "id": "ex_sed_2",
+              "prompt": "Remove all blank lines from server.log",
+              "solution": "sed '/^$/d' server.log",
+              "hint": "The pattern ^$ matches empty lines",
+              "xp": 25
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does sed 's/a/b/' do without the /g flag?",
+              "options": [
+                "Replaces all 'a' with 'b'",
+                "Replaces only the first 'a' per line",
+                "Deletes lines containing 'a'",
+                "Prints lines containing 'a'"
+              ],
+              "answer": "Replaces only the first 'a' per line",
+              "explanation": "Without /g (global), sed only replaces the first match on each line.",
+              "xp": 10
+            }
+          ]
+        },
+        {
+          "id": "awk_basics",
+          "title": "awk: Data Extraction Engine",
+          "icon": "⚙️",
+          "difficulty": "intermediate",
+          "xp_reward": 150,
+          "estimated_minutes": 30,
+          "tags": [
+            "awk",
+            "fields",
+            "data"
+          ],
+          "introduction": "awk is a complete programming language built for text processing. It reads input line by line, splits each line into fields, and lets you write programs that process, filter, and compute on structured text data.",
+          "purpose": "Field-based text processing, filtering, arithmetic, and report generation",
+          "syntax": "awk [OPTIONS] 'PROGRAM' [FILE...]",
+          "sections": [
+            {
+              "title": "Field Access",
+              "content": "awk splits each line by whitespace. $1 is field 1, $2 is field 2, $0 is the whole line, NF is number of fields.",
+              "example": "awk '{print $1}' apache.log",
+              "explanation": "Prints the first field (IP address) from every line"
+            },
+            {
+              "title": "Custom Delimiter",
+              "content": "Use -F to set the field separator.",
+              "example": "awk -F',' '{print $2,$4}' employees.csv",
+              "explanation": "Treats CSV commas as separators, prints name and salary"
+            },
+            {
+              "title": "Pattern Filtering",
+              "content": "awk programs have the form: PATTERN { ACTION }. Only run action on matching lines.",
+              "example": "awk '/ERROR/ {print $0}' server.log",
+              "explanation": "Same as grep ERROR but with awk's processing power available"
+            },
+            {
+              "title": "Arithmetic",
+              "content": "awk can do math. Sum a column, compute averages, compare values.",
+              "example": "awk -F',' 'NR>1 {sum+=$4} END {print sum/NR}' employees.csv",
+              "explanation": "Computes average salary (skipping header row)"
+            },
+            {
+              "title": "NR and FNR",
+              "content": "NR is the total record (line) number. FNR resets per file. Useful for skipping headers with NR>1.",
+              "example": "awk -F',' 'NR>1 {print $2}' employees.csv",
+              "explanation": "Skips the header line and prints only employee names"
+            },
+            {
+              "title": "Associative Arrays",
+              "content": "awk has hash maps built in — perfect for grouping and counting.",
+              "example": "awk '{count[$1]++} END {for(ip in count) print count[ip], ip}' apache.log",
+              "explanation": "Counts requests per IP address — no sort|uniq needed"
+            }
+          ],
+          "common_mistakes": [
+            "Forgetting NR>1 to skip CSV headers",
+            "Using == for string comparison (correct) vs = for assignment",
+            "Forgetting END block for final output after processing all lines"
+          ],
+          "best_practices": [
+            "Use printf for formatted output: printf \"%-20s %5d\\n\", name, count",
+            "Initialize variables explicitly: BEGIN {sum=0}",
+            "Test with NR<=5 first to see output before processing the whole file"
+          ],
+          "exercises": [
+            {
+              "id": "ex_awk_1",
+              "prompt": "Print only the department column (col 3) from employees.csv, skipping the header",
+              "solution": "awk -F',' 'NR>1 {print $3}' employees.csv",
+              "hint": "Use -F',' and NR>1",
+              "xp": 25
+            },
+            {
+              "id": "ex_awk_2",
+              "prompt": "Count how many requests each HTTP status code got in apache.log",
+              "solution": "awk '{count[$9]++} END {for(s in count) print count[s], s}' apache.log | sort -rn",
+              "hint": "Field 9 is the status code. Use an associative array.",
+              "xp": 35
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "In awk, what does $0 represent?",
+              "options": [
+                "The entire current line",
+                "The first field",
+                "The last field",
+                "The line number"
+              ],
+              "answer": "The entire current line",
+              "explanation": "$0 is the entire record (line). $1 is field 1, $NF is the last field, NR is the line number.",
+              "xp": 10
+            },
+            {
+              "id": "q2",
+              "type": "fill_in_blank",
+              "question": "To set comma as the field separator in awk, use flag ___",
+              "options": [],
+              "answer": "-F','",
+              "explanation": "-F sets the field separator. -F',' makes awk treat commas as delimiters.",
+              "xp": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "text_processing",
+      "name": "Text Processing Mastery",
+      "icon": "📝",
+      "color": "#7c3aed",
+      "description": "Master the classic Unix text-processing toolkit.",
+      "order": 2,
+      "lessons": [
+        {
+          "id": "cut_sort_uniq",
+          "title": "cut, sort & uniq: The Classic Trio",
+          "icon": "🔢",
+          "difficulty": "beginner",
+          "xp_reward": 120,
+          "estimated_minutes": 20,
+          "tags": [
+            "cut",
+            "sort",
+            "uniq",
+            "columns"
+          ],
+          "introduction": "cut, sort, and uniq are three complementary tools that together handle most data wrangling tasks. cut extracts columns, sort orders lines, and uniq deduplicates — together they form the backbone of Unix data pipelines.",
+          "purpose": "Extract columns, sort data, and remove duplicates",
+          "syntax": "cut -d DELIM -f FIELDS | sort [OPTIONS] | uniq [OPTIONS]",
+          "sections": [
+            {
+              "title": "cut: Column Extraction",
+              "content": "cut extracts portions of each line. Use -d for delimiter and -f for field numbers.",
+              "example": "cut -d',' -f2,4 employees.csv",
+              "explanation": "Extracts name (field 2) and salary (field 4) from the CSV"
+            },
+            {
+              "title": "cut Character Ranges",
+              "content": "Without -d, cut works on character positions with -c.",
+              "example": "cut -c1-15 server.log",
+              "explanation": "Extracts the first 15 characters — useful for fixed-width formats"
+            },
+            {
+              "title": "sort: Ordering Lines",
+              "content": "sort arranges lines alphabetically by default. -n for numeric, -r for reverse, -k for a specific field.",
+              "example": "sort -t',' -k4 -rn employees.csv",
+              "explanation": "Sorts CSV by salary column (4) in descending numeric order"
+            },
+            {
+              "title": "sort Unique",
+              "content": "sort -u both sorts and removes duplicates in one step.",
+              "example": "awk '{print $1}' apache.log | sort -u",
+              "explanation": "Gets unique IPs without needing to pipe through uniq"
+            },
+            {
+              "title": "uniq: Deduplication",
+              "content": "uniq removes adjacent duplicate lines. Always sort first! -c adds counts, -d shows only duplicates.",
+              "example": "sort server.log | uniq -c | sort -rn",
+              "explanation": "Counts and ranks the most repeated log messages"
+            },
+            {
+              "title": "The Power Pipeline",
+              "content": "Combining all three gives you instant data analytics.",
+              "example": "cut -d',' -f3 employees.csv | sort | uniq -c | sort -rn",
+              "explanation": "Instantly shows employee count per department, ranked"
+            }
+          ],
+          "common_mistakes": [
+            "Using uniq without sort first — it only removes adjacent duplicates",
+            "Forgetting -n with sort for numeric sorting (10 sorts before 9 alphabetically)",
+            "cut fields start at 1, not 0"
+          ],
+          "best_practices": [
+            "Prefer awk -F for CSV when fields might contain commas within quotes",
+            "sort -u is faster than sort | uniq for simple deduplication",
+            "Use -k2 -k1 with sort for secondary sort keys"
+          ],
+          "exercises": [
+            {
+              "id": "ex_csu_1",
+              "prompt": "List all unique departments in employees.csv (sorted alphabetically)",
+              "solution": "cut -d',' -f3 employees.csv | tail -n +2 | sort -u",
+              "hint": "Column 3, skip header, deduplicate",
+              "xp": 20
+            },
+            {
+              "id": "ex_csu_2",
+              "prompt": "Show frequency count of each HTTP status code in apache.log, highest first",
+              "solution": "awk '{print $9}' apache.log | sort | uniq -c | sort -rn",
+              "hint": "Extract field 9, then sort|uniq -c|sort -rn",
+              "xp": 25
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "Why must you sort before using uniq?",
+              "options": [
+                "uniq only removes adjacent duplicates",
+                "uniq requires sorted input to function at all",
+                "sort is always faster",
+                "uniq -c doesn't work unsorted"
+              ],
+              "answer": "uniq only removes adjacent duplicates",
+              "explanation": "uniq compares consecutive lines. Non-adjacent duplicates won't be caught unless the input is sorted first.",
+              "xp": 10
+            }
+          ]
+        },
+        {
+          "id": "tr_wc_head_tail",
+          "title": "tr, wc, head & tail: The Utilities Belt",
+          "icon": "🛠️",
+          "difficulty": "beginner",
+          "xp_reward": 100,
+          "estimated_minutes": 18,
+          "tags": [
+            "tr",
+            "wc",
+            "head",
+            "tail"
+          ],
+          "introduction": "Four small but essential tools: tr translates characters, wc counts things, head shows the start, tail shows the end. They appear in almost every serious pipeline.",
+          "purpose": "Character translation, counting, and file slicing",
+          "syntax": "tr SET1 SET2  |  wc [-l|-w|-c]  |  head/tail [-n N]",
+          "sections": [
+            {
+              "title": "wc: Word Count",
+              "content": "wc counts lines (-l), words (-w), or bytes (-c).",
+              "example": "wc -l server.log",
+              "explanation": "How many log entries? wc -l tells you instantly"
+            },
+            {
+              "title": "head: Top of File",
+              "content": "head shows the first N lines (default 10).",
+              "example": "head -20 server.log",
+              "explanation": "Preview a log file without loading the whole thing"
+            },
+            {
+              "title": "tail: End of File",
+              "content": "tail shows the last N lines. tail -f follows new lines as they're appended (live log monitoring).",
+              "example": "tail -100 server.log",
+              "explanation": "See the most recent 100 log entries"
+            },
+            {
+              "title": "tail -n +N: Skip Lines",
+              "content": "tail -n +2 skips the first line — the standard way to strip CSV headers.",
+              "example": "tail -n +2 employees.csv | wc -l",
+              "explanation": "Counts data rows excluding the header"
+            },
+            {
+              "title": "tr: Character Translation",
+              "content": "tr translates or deletes characters. Use it to change case, replace chars, or squeeze spaces.",
+              "example": "echo 'hello world' | tr 'a-z' 'A-Z'",
+              "explanation": "Converts lowercase to uppercase"
+            },
+            {
+              "title": "tr for Tokenization",
+              "content": "tr -s '[:space:]' '\\n' splits any whitespace-separated text into one word per line.",
+              "example": "cat server.log | tr -s '[:space:]' '\\n' | sort | uniq -c | sort -rn | head -10",
+              "explanation": "Word frequency analysis of a log file in one pipeline"
+            }
+          ],
+          "common_mistakes": [
+            "tail -f vs tail -n — -f follows, -n picks line count",
+            "wc -l counts newlines, so a file with no trailing newline shows one less",
+            "tr works on characters, not strings — use sed for multi-char replacement"
+          ],
+          "best_practices": [
+            "Use head -c 1M to preview the first megabyte of a large file",
+            "Combine: tail -n +2 file | head -100 to get lines 2–101",
+            "tr -d '\\r' fixes Windows line endings (CRLF → LF)"
+          ],
+          "exercises": [
+            {
+              "id": "ex_twht_1",
+              "prompt": "Count the exact number of data rows in employees.csv (excluding header)",
+              "solution": "tail -n +2 employees.csv | wc -l",
+              "hint": "Skip first line with tail -n +2, then count",
+              "xp": 15
+            },
+            {
+              "id": "ex_twht_2",
+              "prompt": "Convert all text in server.log to uppercase",
+              "solution": "cat server.log | tr 'a-z' 'A-Z'",
+              "hint": "tr can translate character ranges",
+              "xp": 20
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does tail -n +2 do?",
+              "options": [
+                "Shows last 2 lines",
+                "Skips the first line and shows rest",
+                "Shows lines starting from line 2 onwards",
+                "Shows 2 lines from the end"
+              ],
+              "answer": "Skips the first line and shows rest",
+              "explanation": "-n +2 means 'start from line 2' — effectively skipping line 1. Used to strip headers.",
+              "xp": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "regex_academy",
+      "name": "Regex Academy",
+      "icon": "🔮",
+      "color": "#dc2626",
+      "description": "Master regular expressions — the Swiss Army knife of text patterns.",
+      "order": 3,
+      "lessons": [
+        {
+          "id": "regex_basics",
+          "title": "Regular Expressions: Pattern Mastery",
+          "icon": "🔮",
+          "difficulty": "intermediate",
+          "xp_reward": 180,
+          "estimated_minutes": 35,
+          "tags": [
+            "regex",
+            "patterns",
+            "grep"
+          ],
+          "introduction": "Regular expressions are a pattern language for describing text. They power grep, sed, awk, and virtually every programming language. Learning regex is one of the highest-leverage skills in computing — a few hours of study saves thousands of hours of manual text work.",
+          "purpose": "Match, extract, and transform text using declarative patterns",
+          "syntax": "Pattern characters: . * + ? ^ $ [] () {} |  \\d \\w \\s",
+          "sections": [
+            {
+              "title": "Anchors: ^ and $",
+              "content": "^ matches the start of a line, $ matches the end. Anchors let you be precise about where a pattern must appear.",
+              "example": "grep '^ERROR' server.log",
+              "explanation": "Matches only lines that START with ERROR (not 'caught ERROR')"
+            },
+            {
+              "title": "Any Character: Dot",
+              "content": "The . (dot) matches any single character except newline.",
+              "example": "grep 'ERR.R' server.log",
+              "explanation": "Matches ERROR, ERR0R, ERR_R — anything in position 4"
+            },
+            {
+              "title": "Quantifiers: * + ?",
+              "content": "* means zero or more, + means one or more, ? means zero or one. Apply to the preceding element.",
+              "example": "grep -E 'ERR+OR' server.log",
+              "explanation": "ERR+OR matches ERRRROR — one or more R's between E and OR"
+            },
+            {
+              "title": "Character Classes: []",
+              "content": "[abc] matches any one of a, b, or c. [a-z] matches any lowercase letter. [^abc] matches anything NOT in the set.",
+              "example": "grep -E '[0-9]{3}\\.[0-9]{3}' apache.log",
+              "explanation": "Matches IP-like patterns: three digits, dot, three digits"
+            },
+            {
+              "title": "Alternation: |",
+              "content": "The | operator means OR. It matches either the left or right expression. Requires -E in grep.",
+              "example": "grep -E 'ERROR|WARN|CRIT' server.log",
+              "explanation": "Matches any of three severity levels"
+            },
+            {
+              "title": "Grouping: ()",
+              "content": "Parentheses group expressions and capture for backreferences in sed.",
+              "example": "sed -E 's/(ERROR): (.*)/[\\1] \\2/' server.log",
+              "explanation": "Captures ERROR and the message, rearranges the format"
+            },
+            {
+              "title": "Escape Sequences",
+              "content": "\\d matches digits, \\w matches word chars, \\s matches whitespace — in grep -P (Perl) or awk.",
+              "example": "grep -oP '\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}' apache.log",
+              "explanation": "Extracts IPv4 addresses using Perl-compatible regex"
+            }
+          ],
+          "common_mistakes": [
+            "Forgetting -E for | and + — basic grep doesn't support them",
+            "Dot matches everything including literal dot — escape it: \\.",
+            "Greedy matching: .* grabs as much as possible — use .*? for lazy in Perl regex"
+          ],
+          "best_practices": [
+            "Build patterns incrementally and test with a small file first",
+            "Use grep -P for Perl regex (\\d, \\w, \\s) when available",
+            "Online testers like regex101.com help visualize what your pattern matches"
+          ],
+          "exercises": [
+            {
+              "id": "ex_rx_1",
+              "prompt": "Extract all IPv4 addresses from apache.log (one per line, deduplicated)",
+              "solution": "grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' apache.log | sort -u",
+              "hint": "Use grep -oE with an IP regex pattern",
+              "xp": 30
+            },
+            {
+              "id": "ex_rx_2",
+              "prompt": "Find all lines in server.log that start with a timestamp (digits)",
+              "solution": "grep -E '^[0-9]' server.log",
+              "hint": "Use ^ to anchor to line start, then a digit class",
+              "xp": 20
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does the regex pattern ^[0-9]+ match?",
+              "options": [
+                "Any line containing a number",
+                "Lines that start with one or more digits",
+                "Lines ending with digits",
+                "Lines with exactly one digit"
+              ],
+              "answer": "Lines that start with one or more digits",
+              "explanation": "^ anchors to line start, [0-9] matches digits, + means one or more.",
+              "xp": 10
+            },
+            {
+              "id": "q2",
+              "type": "multiple_choice",
+              "question": "Which flag enables | and + in grep?",
+              "options": [
+                "-E",
+                "-i",
+                "-v",
+                "-P"
+              ],
+              "answer": "-E",
+              "explanation": "-E enables Extended Regular Expressions, which support | (OR), + (one or more), and ? (zero or one).",
+              "xp": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shell_pipelines",
+      "name": "Shell Pipelines",
+      "icon": "🔗",
+      "color": "#059669",
+      "description": "Compose powerful data pipelines by chaining Unix commands.",
+      "order": 4,
+      "lessons": [
+        {
+          "id": "pipeline_basics",
+          "title": "Pipelines: The Unix Philosophy",
+          "icon": "🔗",
+          "difficulty": "intermediate",
+          "xp_reward": 160,
+          "estimated_minutes": 25,
+          "tags": [
+            "pipe",
+            "stdin",
+            "stdout",
+            "compose"
+          ],
+          "introduction": "The pipe (|) is one of the most powerful ideas in computing: take the output of one command and feed it as input to another. This lets you compose small, focused tools into powerful data processing pipelines — no programming required.",
+          "purpose": "Chain commands so stdout of one becomes stdin of the next",
+          "syntax": "cmd1 | cmd2 | cmd3 | ...",
+          "sections": [
+            {
+              "title": "The Pipe Operator",
+              "content": "| passes stdout of the left command to stdin of the right. Commands run concurrently — data streams through.",
+              "example": "cat server.log | grep ERROR | wc -l",
+              "explanation": "Count error lines: read file → filter errors → count"
+            },
+            {
+              "title": "Building Step by Step",
+              "content": "Always build pipelines incrementally. Run each step, verify output, add the next.",
+              "example": "awk '{print $1}' apache.log | sort | uniq -c | sort -rn | head -10",
+              "explanation": "Top 10 IPs: extract → sort → count → re-sort → limit"
+            },
+            {
+              "title": "Redirection: > and >>",
+              "content": "> redirects output to a file (overwrites). >> appends. < reads stdin from a file.",
+              "example": "grep ERROR server.log > errors_only.txt",
+              "explanation": "Save all error lines to a separate file for later analysis"
+            },
+            {
+              "title": "tee: Split the Stream",
+              "content": "tee writes to both stdout AND a file simultaneously. See output while saving it.",
+              "example": "grep ERROR server.log | tee errors.txt | wc -l",
+              "explanation": "Saves errors to file AND prints the count to terminal"
+            },
+            {
+              "title": "xargs: Distribute Arguments",
+              "content": "xargs takes stdin and passes items as arguments to another command.",
+              "example": "grep -l ERROR *.log | xargs wc -l",
+              "explanation": "Count lines in every log file that contains errors"
+            }
+          ],
+          "common_mistakes": [
+            "Piping to a command that doesn't read stdin (use xargs instead)",
+            "Overwriting a file you're reading: cat file | grep x > file empties it!",
+            "Missing quotes around patterns with spaces or special characters"
+          ],
+          "best_practices": [
+            "Build and test each stage before adding the next",
+            "Use tee to save intermediate results while debugging",
+            "Document complex pipelines with comments in a script"
+          ],
+          "exercises": [
+            {
+              "id": "ex_pipe_1",
+              "prompt": "Count how many unique IPs are in apache.log",
+              "solution": "awk '{print $1}' apache.log | sort -u | wc -l",
+              "hint": "Extract IPs, deduplicate, then count",
+              "xp": 25
+            },
+            {
+              "id": "ex_pipe_2",
+              "prompt": "Show the 5 most common words in server.log",
+              "solution": "cat server.log | tr -s '[:space:]' '\\n' | sort | uniq -c | sort -rn | head -5",
+              "hint": "Split to words, sort, count, re-sort, limit to 5",
+              "xp": 30
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does the > operator do?",
+              "options": [
+                "Pipes stdout to another command",
+                "Redirects stdout to a file (overwrite)",
+                "Appends stdout to a file",
+                "Reads from a file"
+              ],
+              "answer": "Redirects stdout to a file (overwrite)",
+              "explanation": "> redirects stdout to a file, overwriting it. >> appends. | pipes to another command. < reads from file.",
+              "xp": 10
+            }
+          ]
+        },
+        {
+          "id": "find_xargs",
+          "title": "find & xargs: Filesystem Mastery",
+          "icon": "🗂️",
+          "difficulty": "intermediate",
+          "xp_reward": 140,
+          "estimated_minutes": 22,
+          "tags": [
+            "find",
+            "xargs",
+            "filesystem"
+          ],
+          "introduction": "find and xargs together let you locate files by any criteria and apply operations to them in bulk — one of the most powerful combinations in the Unix toolbox.",
+          "purpose": "Locate files and apply bulk operations using find and xargs",
+          "syntax": "find PATH [TESTS] [ACTIONS]  |  xargs [OPTIONS] COMMAND",
+          "sections": [
+            {
+              "title": "find by Name",
+              "content": "Find files matching a name pattern anywhere in the directory tree.",
+              "example": "find . -name '*.log'",
+              "explanation": "Recursively finds all .log files from current directory"
+            },
+            {
+              "title": "find by Type",
+              "content": "-type f for files, -type d for directories.",
+              "example": "find . -type f -name '*.csv'",
+              "explanation": "Only files named *.csv, not directories"
+            },
+            {
+              "title": "find by Size",
+              "content": "-size finds files above/below a size. +10M means over 10 megabytes.",
+              "example": "find . -size +1M -type f",
+              "explanation": "Find all files over 1MB — useful for disk cleanup"
+            },
+            {
+              "title": "find by Time",
+              "content": "-mtime -1 means modified in the last day. -newer FILE means newer than a reference file.",
+              "example": "find . -mtime -1 -name '*.log'",
+              "explanation": "Find log files modified today"
+            },
+            {
+              "title": "xargs: Batch Processing",
+              "content": "xargs converts stdin lines to arguments for another command.",
+              "example": "find . -name '*.log' | xargs wc -l",
+              "explanation": "Count lines in every log file found"
+            },
+            {
+              "title": "xargs with Spaces",
+              "content": "Use -print0 with find and -0 with xargs to handle filenames with spaces.",
+              "example": "find . -name '*.log' -print0 | xargs -0 grep -l ERROR",
+              "explanation": "Safely process log files even if they have spaces in names"
+            }
+          ],
+          "common_mistakes": [
+            "Using find without -maxdepth on huge directory trees",
+            "Forgetting -print0 / -0 for filenames with spaces",
+            "find . -name *.log without quotes — shell expands * before find sees it"
+          ],
+          "best_practices": [
+            "Always quote patterns: find . -name '*.log' not *.log",
+            "Use find ... -exec cmd {} + for performance (batches args like xargs)",
+            "Add -maxdepth 2 to limit recursion depth on large trees"
+          ],
+          "exercises": [
+            {
+              "id": "ex_fx_1",
+              "prompt": "Find all files in the workspace directory and count how many there are",
+              "solution": "find . -type f | wc -l",
+              "hint": "find -type f lists files, pipe to wc -l",
+              "xp": 20
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does find . -mtime -1 find?",
+              "options": [
+                "Files older than 1 day",
+                "Files modified in the last 24 hours",
+                "Files exactly 1 day old",
+                "Files created today"
+              ],
+              "answer": "Files modified in the last 24 hours",
+              "explanation": "-mtime -1 means 'modified less than 1 day ago' — the minus sign means 'less than N days'.",
+              "xp": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "log_analysis",
+      "name": "Log Analysis",
+      "icon": "📋",
+      "color": "#d97706",
+      "description": "Real-world log parsing: Apache, Nginx, syslog, and application logs.",
+      "order": 5,
+      "lessons": [
+        {
+          "id": "log_basics",
+          "title": "Log Analysis: Reading System Stories",
+          "icon": "📋",
+          "difficulty": "intermediate",
+          "xp_reward": 150,
+          "estimated_minutes": 30,
+          "tags": [
+            "logs",
+            "apache",
+            "nginx",
+            "syslog"
+          ],
+          "introduction": "Logs are the heartbeat of every system. Learning to parse them with command-line tools is a superpower — you can diagnose incidents, find security issues, and understand system behavior without any specialized tools.",
+          "purpose": "Parse Apache, Nginx, syslog, and custom application logs",
+          "syntax": "grep | awk | sed | sort | uniq applied to structured log files",
+          "sections": [
+            {
+              "title": "Apache Combined Log Format",
+              "content": "Apache logs follow: IP - - [datetime] \"METHOD URL protocol\" status bytes \"referer\" \"user-agent\"",
+              "example": "awk '{print $1,$7,$9}' apache.log | head -5",
+              "explanation": "Extracts IP, URL, and status code from the first 5 lines"
+            },
+            {
+              "title": "Counting Status Codes",
+              "content": "Quick health check: what response codes is your server sending?",
+              "example": "awk '{print $9}' apache.log | sort | uniq -c | sort -rn",
+              "explanation": "Distribution of all HTTP status codes — 200s are good, 500s are errors"
+            },
+            {
+              "title": "Traffic Analysis",
+              "content": "Find peak traffic periods and most popular content.",
+              "example": "awk '{print $4}' apache.log | cut -d: -f2 | sort | uniq -c",
+              "explanation": "Request count per hour of day"
+            },
+            {
+              "title": "Error Investigation",
+              "content": "Find and count 404 errors — missing pages that need fixing.",
+              "example": "awk '$9==404 {print $7}' apache.log | sort | uniq -c | sort -rn | head -10",
+              "explanation": "Top 10 missing URLs — could be a broken link or a probing attack"
+            },
+            {
+              "title": "syslog Format",
+              "content": "syslog format: Month Day HH:MM:SS hostname process[pid]: message",
+              "example": "grep 'error' syslog.log | awk '{print $1,$2,$5}' | sort | uniq -c",
+              "explanation": "Error frequency by service"
+            },
+            {
+              "title": "Bandwidth Analysis",
+              "content": "Calculate total bytes transferred from Apache log field 10.",
+              "example": "awk '{sum+=$10} END {printf \"Total: %.2f MB\\n\", sum/1048576}' apache.log",
+              "explanation": "Total bandwidth served — useful for billing and capacity planning"
+            }
+          ],
+          "common_mistakes": [
+            "Forgetting that Apache field numbers shift if your log format differs",
+            "Treating IP::port as just IP without extracting the IP part",
+            "Not handling log rotation — yesterday's log is in a .1 or .gz file"
+          ],
+          "best_practices": [
+            "Build a library of one-liners for your most common queries",
+            "Use awk BEGIN to print headers for your reports",
+            "Cross-reference multiple log files to correlate events"
+          ],
+          "exercises": [
+            {
+              "id": "ex_log_1",
+              "prompt": "Find the top 3 most requested URLs in apache.log",
+              "solution": "awk '{print $7}' apache.log | sort | uniq -c | sort -rn | head -3",
+              "hint": "Field 7 is the URL, then sort|uniq|sort|head",
+              "xp": 25
+            },
+            {
+              "id": "ex_log_2",
+              "prompt": "Count total 500 errors in apache.log",
+              "solution": "awk '$9==500' apache.log | wc -l",
+              "hint": "Filter where field 9 equals 500, then count",
+              "xp": 20
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "In Apache Combined Log Format, which field contains the HTTP status code?",
+              "options": [
+                "Field 7",
+                "Field 9",
+                "Field 4",
+                "Field 10"
+              ],
+              "answer": "Field 9",
+              "explanation": "The standard Apache Combined Log Format: IP - - [timestamp] \"request\" STATUS bytes \"referer\" \"user-agent\". Status is field 9.",
+              "xp": 10
+            }
+          ]
+        },
+        {
+          "id": "advanced_log_analysis",
+          "title": "Advanced Log Analysis: Incident Response",
+          "icon": "🚨",
+          "difficulty": "advanced",
+          "xp_reward": 220,
+          "estimated_minutes": 40,
+          "tags": [
+            "incident",
+            "security",
+            "analysis"
+          ],
+          "introduction": "When systems go wrong, the logs tell the story. Advanced log analysis combines pattern matching, time correlation, and multi-file analysis to diagnose incidents in minutes rather than hours.",
+          "purpose": "Correlate events across log files and detect anomalies",
+          "syntax": "Multi-file analysis, time-windowed queries, cross-correlation",
+          "sections": [
+            {
+              "title": "Time Windowing",
+              "content": "Extract events in a specific time window using awk comparisons on the timestamp field.",
+              "example": "awk '$4~/14:[0-5][0-9]:/ {print}' apache.log | wc -l",
+              "explanation": "Count requests during the 14:00–14:59 hour (2 PM)"
+            },
+            {
+              "title": "Anomaly Detection",
+              "content": "Spot IPs with unusually high request rates — a sign of bots or attacks.",
+              "example": "awk '{count[$1]++} END {for(ip in count) if(count[ip]>100) print ip, count[ip]}' apache.log",
+              "explanation": "Lists any IP with over 100 requests — potential threat"
+            },
+            {
+              "title": "Error Rate Trending",
+              "content": "Calculate error rates over time to spot degradation.",
+              "example": "awk '{total++; if($9>=500) errors++} END {printf \"Error rate: %.1f%%\\n\", errors/total*100}' apache.log",
+              "explanation": "Overall 5xx error rate — the key SLO metric"
+            },
+            {
+              "title": "Multi-Log Correlation",
+              "content": "Combine apache and nginx logs for a unified view.",
+              "example": "cat apache.log nginx.log | sort -k4 | grep 'ERROR\\|500' | tail -50",
+              "explanation": "Unified error timeline across both web servers"
+            },
+            {
+              "title": "Failed Login Detection",
+              "content": "Find repeated authentication failures — brute force attacks leave a pattern.",
+              "example": "grep 'authentication failure\\|Failed password' syslog.log | awk '{print $NF}' | sort | uniq -c | sort -rn | head -10",
+              "explanation": "Top 10 users targeted by auth failures"
+            },
+            {
+              "title": "Reporting with awk",
+              "content": "Generate a proper incident report with awk's printf.",
+              "example": "awk '{errors[$9]++} END {print \"=== Error Report ===\"; for(s in errors) if(s>=400) printf \"%s: %d\\n\", s, errors[s]}' apache.log | sort",
+              "explanation": "Formatted error report showing all HTTP error codes and counts"
+            }
+          ],
+          "common_mistakes": [
+            "Looking at logs in isolation — always correlate with other log sources",
+            "Forgetting timezone differences when correlating logs from different systems",
+            "Sampling logs without understanding sampling bias"
+          ],
+          "best_practices": [
+            "Archive raw logs before analysis — you may need to re-examine them",
+            "Save your one-liners to a runbook for the next incident",
+            "Always check log file sizes before cat-ing — use head first"
+          ],
+          "exercises": [
+            {
+              "id": "ex_al_1",
+              "prompt": "Calculate the 5xx error rate as a percentage in apache.log",
+              "solution": "awk '{t++; if($9>=500) e++} END {printf \"%.1f%%\\n\", e/t*100}' apache.log",
+              "hint": "Count total and errors separately, compute percentage in END",
+              "xp": 35
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "You want to find IPs making more than 50 requests. Where does the filter go in awk?",
+              "options": [
+                "In a pattern before {print}",
+                "In a BEGIN block",
+                "In an END block after counting",
+                "In a separate grep step"
+              ],
+              "answer": "In an END block after counting",
+              "explanation": "You must count ALL requests per IP first (using an array), then filter in END where totals are available.",
+              "xp": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vlsi_track",
+      "name": "VLSI Text Processing",
+      "icon": "⚡",
+      "color": "#7c3aed",
+      "description": "Parse VLSI EDA tool reports: timing, synthesis, liberty, and constraints.",
+      "order": 6,
+      "lessons": [
+        {
+          "id": "vlsi_timing",
+          "title": "VLSI Reports: EDA Text Processing",
+          "icon": "⚡",
+          "difficulty": "advanced",
+          "xp_reward": 200,
+          "estimated_minutes": 35,
+          "tags": [
+            "vlsi",
+            "eda",
+            "timing",
+            "liberty"
+          ],
+          "introduction": "VLSI design tools generate massive text reports. Physical design engineers spend significant time parsing timing reports, synthesis logs, and liberty files. Command-line tools turn hours of manual searching into seconds of automated extraction.",
+          "purpose": "Parse EDA tool outputs: timing reports, synthesis logs, SDC, Liberty",
+          "syntax": "grep | awk | sed applied to EDA report formats",
+          "sections": [
+            {
+              "title": "Timing Reports",
+              "content": "Timing reports show setup/hold slack for each path. Negative slack = violation.",
+              "example": "grep 'VIOLATED' timing.rpt | wc -l",
+              "explanation": "Quick count of timing violations — the number every PE watches"
+            },
+            {
+              "title": "Worst Negative Slack",
+              "content": "Find the critical path — the path with the worst (most negative) slack.",
+              "example": "grep 'slack' timing.rpt | grep -oE '[-0-9.]+' | sort -n | head -1",
+              "explanation": "Extracts the WNS — the number that defines your achievable frequency"
+            },
+            {
+              "title": "Liberty File Parsing",
+              "content": "Liberty files define cell timing and power. Counting cells, pins, and attributes.",
+              "example": "grep -c '^\\s*cell' liberty.lib",
+              "explanation": "Total standard cells in the library"
+            },
+            {
+              "title": "SDC Constraint Analysis",
+              "content": "SDC files define timing constraints. Extract clock definitions and frequencies.",
+              "example": "grep 'create_clock' constraints.sdc | awk '{for(i=1;i<=NF;i++) if($i==\"-period\") print $(i+1)}'",
+              "explanation": "Extracts all clock periods (divide 1000 to get MHz)"
+            },
+            {
+              "title": "Synthesis Report Mining",
+              "content": "Synthesis logs contain area, power, and QoR summaries buried in verbose output.",
+              "example": "awk '/Cell Area/,/^$/' synthesis.log | head -20",
+              "explanation": "Extracts the cell area section from synthesis report"
+            },
+            {
+              "title": "Netlist Statistics",
+              "content": "Count cells, instances, and connections in a Verilog netlist.",
+              "example": "grep -c '^\\s*\\.' netlist.v",
+              "explanation": "Count module port connections — proxy for design size"
+            }
+          ],
+          "common_mistakes": [
+            "EDA reports often have leading whitespace — use \\s* or trim before comparing",
+            "Numbers may be in scientific notation (1.23e-09) — handle with awk",
+            "Report format changes between tool versions — always verify column positions"
+          ],
+          "best_practices": [
+            "Build a library of EDA parsing scripts versioned with your design",
+            "Use awk for multi-field extraction from tabular EDA reports",
+            "Cross-check extracted numbers against the tool's own summary report"
+          ],
+          "exercises": [
+            {
+              "id": "ex_vlsi_1",
+              "prompt": "Count the number of timing violations (VIOLATED) in timing.rpt",
+              "solution": "grep -c 'VIOLATED' timing.rpt",
+              "hint": "grep -c counts matching lines",
+              "xp": 20
+            },
+            {
+              "id": "ex_vlsi_2",
+              "prompt": "List all clock names defined in constraints.sdc",
+              "solution": "grep 'create_clock' constraints.sdc | grep -oE '\\-name [^ ]+' | awk '{print $2}'",
+              "hint": "Look for -name argument in create_clock statements",
+              "xp": 30
+            }
+          ],
+          "quiz": [
+            {
+              "id": "q1",
+              "type": "multiple_choice",
+              "question": "What does negative slack in a timing report mean?",
+              "options": [
+                "The path is passing timing",
+                "The path has a timing violation",
+                "The path is unconstrained",
+                "The clock is undefined"
+              ],
+              "answer": "The path has a timing violation",
+              "explanation": "Negative slack means the signal arrives late — the timing constraint is violated. The design cannot run at the target frequency.",
+              "xp": 10
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

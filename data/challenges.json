@@ -1,0 +1,671 @@
+{
+  "challenges": [
+    {
+      "id": "ch_001",
+      "title": "Error Hunter",
+      "icon": "🎯",
+      "difficulty": "beginner",
+      "xp_reward": 150,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Find all unique ERROR types and count their occurrences",
+      "description": "The production server is throwing errors. Your job is to identify what types of errors are occurring and how frequently.",
+      "hints": [
+        "grep can filter for ERROR lines",
+        "awk can extract specific fields",
+        "sort | uniq -c gives you counts",
+        "sort -rn sorts numerically in reverse (highest first)"
+      ],
+      "expected_pattern": "numerical count followed by error type",
+      "validation_type": "pattern_match",
+      "solution": "grep 'ERROR' server.log | awk '{print $NF}' | sort | uniq -c | sort -rn",
+      "tags": [
+        "grep",
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_002",
+      "title": "Line Counter",
+      "icon": "🔢",
+      "difficulty": "beginner",
+      "xp_reward": 100,
+      "track": "linux_fundamentals",
+      "dataset": "employees.csv",
+      "objective": "Count the number of employees (data rows, excluding header) in employees.csv",
+      "description": "The HR team needs a quick count. Count only data rows, not the header.",
+      "hints": [
+        "wc -l counts lines",
+        "The first line is a header",
+        "Subtract 1, or skip with tail -n +2"
+      ],
+      "expected_pattern": "single number",
+      "validation_type": "line_count",
+      "expected_lines": 1,
+      "solution": "tail -n +2 employees.csv | wc -l",
+      "tags": [
+        "wc",
+        "tail"
+      ]
+    },
+    {
+      "id": "ch_003",
+      "title": "IP Extractor",
+      "icon": "🌐",
+      "difficulty": "beginner",
+      "xp_reward": 120,
+      "track": "log_analysis",
+      "dataset": "apache.log",
+      "objective": "List all unique IP addresses that accessed the server",
+      "description": "Extract and deduplicate every IP address from the Apache access log.",
+      "hints": [
+        "IPs are in the first field",
+        "awk can print specific fields",
+        "sort | uniq removes duplicates"
+      ],
+      "expected_pattern": "list of IPs one per line",
+      "validation_type": "pattern_match",
+      "solution": "awk '{print $1}' apache.log | sort | uniq",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_004",
+      "title": "Status Sniffer",
+      "icon": "📡",
+      "difficulty": "beginner",
+      "xp_reward": 130,
+      "track": "log_analysis",
+      "dataset": "apache.log",
+      "objective": "Show how many requests returned each HTTP status code",
+      "description": "Understand the health of your web server by counting each status code.",
+      "hints": [
+        "HTTP status is the 9th field in Apache Combined Log Format",
+        "sort | uniq -c gives counts",
+        "sort -rn shows most frequent first"
+      ],
+      "expected_pattern": "count then status code",
+      "validation_type": "pattern_match",
+      "solution": "awk '{print $9}' apache.log | sort | uniq -c | sort -rn",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_007",
+      "title": "Top Talkers",
+      "icon": "📶",
+      "difficulty": "beginner",
+      "xp_reward": 140,
+      "track": "log_analysis",
+      "dataset": "nginx.log",
+      "objective": "Find the top 5 IP addresses by number of requests in nginx.log",
+      "description": "Identify the clients making the most requests — could be a bot or a heavy user.",
+      "hints": [
+        "First field is IP",
+        "sort | uniq -c gives request counts",
+        "sort -rn | head -5 gives top 5"
+      ],
+      "expected_pattern": "5 lines with count and IP",
+      "validation_type": "line_count",
+      "expected_lines": 5,
+      "solution": "awk '{print $1}' nginx.log | sort | uniq -c | sort -rn | head -5",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq",
+        "head"
+      ]
+    },
+    {
+      "id": "ch_009",
+      "title": "Empty Line Eraser",
+      "icon": "🧹",
+      "difficulty": "beginner",
+      "xp_reward": 90,
+      "track": "text_processing",
+      "dataset": "server.log",
+      "objective": "Print the server.log with all blank lines removed",
+      "description": "Clean up log files by removing empty lines for easier analysis.",
+      "hints": [
+        "grep -v matches lines NOT containing a pattern",
+        "An empty line matches the regex ^$"
+      ],
+      "expected_pattern": "no blank lines",
+      "validation_type": "pattern_match",
+      "solution": "grep -v '^$' server.log",
+      "tags": [
+        "grep",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_010",
+      "title": "Field Splitter",
+      "icon": "✂️",
+      "difficulty": "beginner",
+      "xp_reward": 110,
+      "track": "text_processing",
+      "dataset": "employees.csv",
+      "objective": "Extract only the employee names (column 2) from employees.csv",
+      "description": "Pull a single column from a CSV — a fundamental data wrangling task.",
+      "hints": [
+        "cut uses a delimiter with -d",
+        "Fields are numbered from 1 with -f",
+        "The CSV uses commas as delimiters"
+      ],
+      "expected_pattern": "list of names",
+      "validation_type": "pattern_match",
+      "solution": "cut -d',' -f2 employees.csv | tail -n +2",
+      "tags": [
+        "cut"
+      ]
+    },
+    {
+      "id": "ch_005",
+      "title": "Salary Analyst",
+      "icon": "💰",
+      "difficulty": "intermediate",
+      "xp_reward": 200,
+      "track": "text_processing",
+      "dataset": "employees.csv",
+      "objective": "Find the average salary across all employees",
+      "description": "Calculate the mean salary from the CSV. Column 4 is salary.",
+      "hints": [
+        "awk can sum a column",
+        "NR tracks number of records",
+        "END block runs after all input",
+        "Divide sum by count for average"
+      ],
+      "expected_pattern": "single number (average salary)",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1 {sum+=$4; n++} END {printf \"%.2f\\n\", sum/n}' employees.csv",
+      "tags": [
+        "awk",
+        "arithmetic"
+      ]
+    },
+    {
+      "id": "ch_006",
+      "title": "Timing Violator",
+      "icon": "⏱️",
+      "difficulty": "intermediate",
+      "xp_reward": 250,
+      "track": "vlsi_track",
+      "dataset": "timing.rpt",
+      "objective": "List all paths with negative slack (timing violations), worst first",
+      "description": "The VLSI timing report contains setup violations. Extract and sort them to prioritize fixing.",
+      "hints": [
+        "Violations have negative slack values",
+        "grep can find lines with negative numbers",
+        "Sort numerically on the slack column"
+      ],
+      "expected_pattern": "lines with negative slack values",
+      "validation_type": "pattern_match",
+      "solution": "grep 'VIOLATED' timing.rpt | sort -t'|' -k3 -n",
+      "tags": [
+        "grep",
+        "sort"
+      ]
+    },
+    {
+      "id": "ch_008",
+      "title": "Regex Surgeon",
+      "icon": "🔬",
+      "difficulty": "intermediate",
+      "xp_reward": 220,
+      "track": "regex_academy",
+      "dataset": "server.log",
+      "objective": "Extract all timestamps (HH:MM:SS format) from server.log",
+      "description": "Parse timestamps using regex — a key skill for log timeline analysis.",
+      "hints": [
+        "grep -oE extracts only the matched part",
+        "-E enables extended regex",
+        "Time pattern: [0-9]{2}:[0-9]{2}:[0-9]{2}"
+      ],
+      "expected_pattern": "timestamps one per line",
+      "validation_type": "pattern_match",
+      "solution": "grep -oE '[0-9]{2}:[0-9]{2}:[0-9]{2}' server.log | sort -u",
+      "tags": [
+        "grep",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_011",
+      "title": "404 Finder",
+      "icon": "🚫",
+      "difficulty": "intermediate",
+      "xp_reward": 180,
+      "track": "log_analysis",
+      "dataset": "apache.log",
+      "objective": "List the top 10 URLs returning 404 errors, with counts",
+      "description": "Find which pages are missing and causing 404s — useful for fixing broken links.",
+      "hints": [
+        "Field 9 is status code",
+        "Field 7 is the URL/path",
+        "Filter for 404 then count URLs"
+      ],
+      "expected_pattern": "10 lines with count and URL",
+      "validation_type": "line_count",
+      "expected_lines": 10,
+      "solution": "awk '$9==\"404\" {print $7}' apache.log | sort | uniq -c | sort -rn | head -10",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_012",
+      "title": "Sed Sculptor",
+      "icon": "🎨",
+      "difficulty": "intermediate",
+      "xp_reward": 200,
+      "track": "linux_fundamentals",
+      "dataset": "employees.csv",
+      "objective": "Replace all commas with pipes (|) in employees.csv",
+      "description": "Transform the CSV delimiter — useful for piping to column or other tools.",
+      "hints": [
+        "sed s/OLD/NEW/g replaces globally",
+        "The delimiter to replace is a comma",
+        "-i edits in-place (or just print)"
+      ],
+      "expected_pattern": "pipe-delimited output",
+      "validation_type": "pattern_match",
+      "solution": "sed 's/,/|/g' employees.csv",
+      "tags": [
+        "sed"
+      ]
+    },
+    {
+      "id": "ch_013",
+      "title": "Word Frequency",
+      "icon": "📊",
+      "difficulty": "intermediate",
+      "xp_reward": 210,
+      "track": "text_processing",
+      "dataset": "server.log",
+      "objective": "Find the 10 most frequent words in server.log",
+      "description": "Word frequency analysis is the foundation of text mining. Apply it to a server log.",
+      "hints": [
+        "tr can split on whitespace",
+        "-s squeezes repeated characters",
+        "sort | uniq -c | sort -rn | head -10"
+      ],
+      "expected_pattern": "10 lines with count and word",
+      "validation_type": "line_count",
+      "expected_lines": 10,
+      "solution": "cat server.log | tr -s '[:space:]' '\\n' | sort | uniq -c | sort -rn | head -10",
+      "tags": [
+        "tr",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_014",
+      "title": "Department Headcount",
+      "icon": "👥",
+      "difficulty": "intermediate",
+      "xp_reward": 190,
+      "track": "text_processing",
+      "dataset": "employees.csv",
+      "objective": "Count employees per department and sort by headcount descending",
+      "description": "Group employees by department and rank departments by size.",
+      "hints": [
+        "Column 3 is department",
+        "Skip the header row",
+        "sort | uniq -c | sort -rn"
+      ],
+      "expected_pattern": "count then department name",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1 {print $3}' employees.csv | sort | uniq -c | sort -rn",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_015",
+      "title": "Liberty Cell Hunt",
+      "icon": "🔌",
+      "difficulty": "intermediate",
+      "xp_reward": 230,
+      "track": "vlsi_track",
+      "dataset": "liberty.lib",
+      "objective": "Count the total number of cell definitions in liberty.lib",
+      "description": "Liberty files define standard cell libraries. Count how many cells this library contains.",
+      "hints": [
+        "Cell definitions start with 'cell ('",
+        "grep -c counts matching lines",
+        "Trim leading whitespace in your pattern"
+      ],
+      "expected_pattern": "single number",
+      "validation_type": "line_count",
+      "expected_lines": 1,
+      "solution": "grep -c 'cell (' liberty.lib",
+      "tags": [
+        "grep"
+      ]
+    },
+    {
+      "id": "ch_016",
+      "title": "Apache Attack Detector",
+      "icon": "🚨",
+      "difficulty": "advanced",
+      "xp_reward": 350,
+      "track": "log_analysis",
+      "dataset": "apache.log",
+      "objective": "Find IPs making more than 100 requests — potential bots or attackers",
+      "description": "Identify high-volume requesters that may be scraping or attacking your site.",
+      "hints": [
+        "Count requests per IP",
+        "awk can filter on a condition",
+        "NR > threshold filters the count"
+      ],
+      "expected_pattern": "IPs with request counts over 100",
+      "validation_type": "pattern_match",
+      "solution": "awk '{print $1}' apache.log | sort | uniq -c | sort -rn | awk '$1>100 {print $2, $1}'",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_017",
+      "title": "Awk Reporter",
+      "icon": "📋",
+      "difficulty": "advanced",
+      "xp_reward": 380,
+      "track": "text_processing",
+      "dataset": "employees.csv",
+      "objective": "Print a formatted report: Department | Headcount | Avg Salary",
+      "description": "Combine grouping, counting, and averaging in a single awk program.",
+      "hints": [
+        "Use associative arrays in awk",
+        "Store sum and count per department",
+        "Print in END block with formatting"
+      ],
+      "expected_pattern": "formatted table with department stats",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1 {dept[$3]++; sal[$3]+=$4} END {for (d in dept) printf \"%-20s | %3d | %8.0f\\n\", d, dept[d], sal[d]/dept[d]}' employees.csv | sort",
+      "tags": [
+        "awk"
+      ]
+    },
+    {
+      "id": "ch_018",
+      "title": "Clock Domain Mapper",
+      "icon": "⏰",
+      "difficulty": "advanced",
+      "xp_reward": 400,
+      "track": "vlsi_track",
+      "dataset": "constraints.sdc",
+      "objective": "Extract all clock names and their frequencies from the SDC file",
+      "description": "SDC files define design constraints. Parse the create_clock statements to build a clock inventory.",
+      "hints": [
+        "create_clock defines clocks",
+        "-name gives the clock name",
+        "-period gives the period (freq = 1000/period MHz)"
+      ],
+      "expected_pattern": "clock names with periods",
+      "validation_type": "pattern_match",
+      "solution": "grep 'create_clock' constraints.sdc | awk '{for(i=1;i<=NF;i++) if($i==\"-name\") print $(i+1), \"period:\", $(i-1+2)}' 2>/dev/null || grep 'create_clock' constraints.sdc | grep -oE '\\-name [^ ]+' | awk '{print $2}'",
+      "tags": [
+        "grep",
+        "awk",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_019",
+      "title": "Sed Pipeline",
+      "icon": "🔄",
+      "difficulty": "advanced",
+      "xp_reward": 360,
+      "track": "linux_fundamentals",
+      "dataset": "employees.csv",
+      "objective": "Using only sed, extract lines where salary > 80000 (column 4)",
+      "description": "sed is usually for substitution but it can do conditional operations too.",
+      "hints": [
+        "This is tricky — sed can't do arithmetic natively",
+        "Consider chaining greps instead if needed",
+        "Or use a creative pattern match for 6-digit salaries starting with 8 or 9"
+      ],
+      "expected_pattern": "CSV lines with high salaries",
+      "validation_type": "pattern_match",
+      "solution": "grep -E ',[89][0-9]{4},' employees.csv | grep -v '^Name'",
+      "tags": [
+        "grep",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_020",
+      "title": "Syslog Error Timeline",
+      "icon": "📅",
+      "difficulty": "advanced",
+      "xp_reward": 420,
+      "track": "log_analysis",
+      "dataset": "syslog.log",
+      "objective": "Show error counts grouped by hour, formatted as HH:00 — N errors",
+      "description": "Build an hourly error histogram from a syslog file — essential for incident timelines.",
+      "hints": [
+        "Extract the time field",
+        "Cut to get just the hour",
+        "Format output with printf or awk"
+      ],
+      "expected_pattern": "hours with error counts",
+      "validation_type": "pattern_match",
+      "solution": "grep -i 'error' syslog.log | awk '{print $3}' | cut -d: -f1 | sort | uniq -c | awk '{printf \"%s:00 — %d errors\\n\", $2, $1}'",
+      "tags": [
+        "grep",
+        "awk",
+        "cut",
+        "sort"
+      ]
+    },
+    {
+      "id": "ch_021",
+      "title": "Multi-File Merger",
+      "icon": "🗂️",
+      "difficulty": "advanced",
+      "xp_reward": 390,
+      "track": "shell_pipelines",
+      "dataset": "apache.log",
+      "objective": "Combine apache.log and nginx.log, sort all entries by timestamp, show the 20 most recent",
+      "description": "Merge two log files and present a unified timeline — a real-world ops skill.",
+      "hints": [
+        "cat merges files",
+        "sort can sort on a field",
+        "-k specifies the key field",
+        "tail or head limits output"
+      ],
+      "expected_pattern": "20 lines merged from both logs",
+      "validation_type": "line_count",
+      "expected_lines": 20,
+      "solution": "cat apache.log nginx.log | sort -k4 | tail -20",
+      "tags": [
+        "cat",
+        "sort",
+        "tail"
+      ]
+    },
+    {
+      "id": "ch_022",
+      "title": "Awk State Machine",
+      "icon": "🤖",
+      "difficulty": "expert",
+      "xp_reward": 600,
+      "track": "text_processing",
+      "dataset": "synthesis.log",
+      "objective": "Extract the QoR summary table from synthesis.log — area, power, and timing stats",
+      "description": "Synthesis logs contain structured reports buried in output. Use awk to parse state transitions and extract the summary table.",
+      "hints": [
+        "Look for section boundaries",
+        "awk can track whether you're 'inside' a section",
+        "Print only lines between the markers"
+      ],
+      "expected_pattern": "QoR summary statistics",
+      "validation_type": "pattern_match",
+      "solution": "awk '/QoR Summary/,/^$/' synthesis.log | head -30",
+      "tags": [
+        "awk"
+      ]
+    },
+    {
+      "id": "ch_023",
+      "title": "Sed Address Book",
+      "icon": "📖",
+      "difficulty": "expert",
+      "xp_reward": 550,
+      "track": "linux_fundamentals",
+      "dataset": "employees.csv",
+      "objective": "Using sed, number every data line as 'N. Name, Dept, Salary' (skip header)",
+      "description": "Combine line numbering and field formatting using sed's advanced features.",
+      "hints": [
+        "sed = prints line numbers",
+        "Or use sed with a counter variable... actually awk is easier here",
+        "Challenge: do it in pure sed using branching"
+      ],
+      "expected_pattern": "numbered formatted employee lines",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1 {printf \"%d. %s, %s, $%s\\n\", NR-1, $2, $3, $4}' employees.csv",
+      "tags": [
+        "awk",
+        "sed"
+      ]
+    },
+    {
+      "id": "ch_024",
+      "title": "Pipeline Architect",
+      "icon": "🏗️",
+      "difficulty": "expert",
+      "xp_reward": 700,
+      "track": "shell_pipelines",
+      "dataset": "apache.log",
+      "objective": "One-liner: top 5 IPs, their total bytes transferred, and their most common status code",
+      "description": "Build a complex multi-dimensional analysis pipeline combining awk associative arrays.",
+      "hints": [
+        "Track multiple stats per IP in awk arrays",
+        "bytes field is $10 in Apache Combined Log",
+        "status is $9",
+        "Print formatted summary in END block"
+      ],
+      "expected_pattern": "5 lines with IP, bytes, status",
+      "validation_type": "line_count",
+      "expected_lines": 5,
+      "solution": "awk '{ip[$1]++; bytes[$1]+=$10; status[$1][$9]++} END {for(i in ip) {max=0; for(s in status[i]) if(status[i][s]>max){max=status[i][s];top=s}; print ip[i], bytes[i], top, i}}' apache.log | sort -rn | head -5",
+      "tags": [
+        "awk"
+      ]
+    },
+    {
+      "id": "ch_025",
+      "title": "Regex Maestro",
+      "icon": "🎸",
+      "difficulty": "expert",
+      "xp_reward": 650,
+      "track": "regex_academy",
+      "dataset": "apache.log",
+      "objective": "Extract all unique User-Agent strings from apache.log and classify: browser vs bot vs other",
+      "description": "User-agent parsing is essential for traffic analysis. Build a classifier using grep and awk.",
+      "hints": [
+        "User-Agent is in quotes near the end of each log line",
+        "grep -oP with a Perl regex can extract quoted strings",
+        "Classify based on keywords: Mozilla, bot, crawler"
+      ],
+      "expected_pattern": "classified user agent types with counts",
+      "validation_type": "pattern_match",
+      "solution": "awk -F'\"' '{print $6}' apache.log | sort | uniq -c | sort -rn | head -20",
+      "tags": [
+        "awk",
+        "grep",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_026",
+      "title": "The Grand Pipeline",
+      "icon": "💀",
+      "difficulty": "master",
+      "xp_reward": 1000,
+      "track": "shell_pipelines",
+      "dataset": "apache.log",
+      "objective": "Compute: requests/min rate for each unique URL, show top 10 busiest endpoints",
+      "description": "This requires parsing timestamps, computing rates, and ranking — all in one pipeline. This is what senior engineers do in production.",
+      "hints": [
+        "Extract URL and timestamp",
+        "Count per URL per minute",
+        "Divide count by time window",
+        "sort and head for top 10"
+      ],
+      "expected_pattern": "top 10 URLs with requests per minute",
+      "validation_type": "line_count",
+      "expected_lines": 10,
+      "solution": "awk '{url=$7; gsub(/\\?.*$/,\"\",url); count[url]++} END {for(u in count) print count[u], u}' apache.log | sort -rn | head -10",
+      "tags": [
+        "awk",
+        "sort"
+      ]
+    },
+    {
+      "id": "ch_027",
+      "title": "VLSI Timing Closure",
+      "icon": "⚡",
+      "difficulty": "master",
+      "xp_reward": 900,
+      "track": "vlsi_track",
+      "dataset": "timing.rpt",
+      "objective": "For each violated path: show endpoint, slack, and suggest minimum fix (negate slack = required improvement in ps)",
+      "description": "Real timing closure work. Parse violated paths, compute required fixes, format a fix-priority report.",
+      "hints": [
+        "Each violation has endpoint and slack",
+        "Negative slack = violation magnitude",
+        "Sort by worst violation first",
+        "Output: endpoint | slack | fix_needed"
+      ],
+      "expected_pattern": "violated paths with fix requirements",
+      "validation_type": "pattern_match",
+      "solution": "grep 'VIOLATED' timing.rpt | awk '{for(i=1;i<=NF;i++) if($i~/^-[0-9]/) slack=$i; print slack, \"fix needed:\", -slack+0, \"ps\"}' | sort -n | head -20",
+      "tags": [
+        "grep",
+        "awk",
+        "sort"
+      ]
+    },
+    {
+      "id": "ch_028",
+      "title": "Log Correlation",
+      "icon": "🔗",
+      "difficulty": "master",
+      "xp_reward": 950,
+      "track": "log_analysis",
+      "dataset": "apache.log",
+      "objective": "Find all IPs that hit a 500 error AND also made more than 50 total requests — cross-correlate two datasets",
+      "description": "Real incident response: find misbehaving clients who are both heavy users AND causing errors.",
+      "hints": [
+        "You need two passes or two awk arrays",
+        "First track: IPs with 500 errors",
+        "Second track: IPs with >50 total requests",
+        "Output: intersection of both sets"
+      ],
+      "expected_pattern": "IPs matching both conditions",
+      "validation_type": "pattern_match",
+      "solution": "awk '{count[$1]++; if($9==\"500\") bad[$1]=1} END {for(ip in bad) if(count[ip]>50) print ip, count[ip]}' apache.log | sort -k2 -rn",
+      "tags": [
+        "awk"
+      ]
+    }
+  ]
+}

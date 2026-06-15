@@ -1,0 +1,251 @@
+themes:
+  professional_dark:
+    name: "Professional Dark"
+    description: "Clean dark theme with cyan accents"
+    base: dark
+    colors:
+      primary: "#00d4ff"
+      secondary: "#0099cc"
+      accent: "#ff6b35"
+      success: "#10b981"
+      warning: "#f59e0b"
+      error: "#ef4444"
+      surface: "#0d1117"
+      surface2: "#161b22"
+      surface3: "#21262d"
+      border: "#30363d"
+      text: "#e6edf3"
+      text_muted: "#7d8590"
+      text_dim: "#484f58"
+      xp_color: "#ffd700"
+    css: |
+      Screen { background: #0d1117; color: #e6edf3; }
+      Header { background: #161b22; color: #00d4ff; border-bottom: solid #30363d; }
+      Footer { background: #161b22; color: #7d8590; border-top: solid #30363d; }
+      Sidebar { background: #161b22; border-right: solid #30363d; }
+      .panel { background: #161b22; border: solid #30363d; }
+      .accent { color: #00d4ff; }
+      .success { color: #10b981; }
+      .warning { color: #f59e0b; }
+      .error { color: #ef4444; }
+      .xp { color: #ffd700; }
+      .muted { color: #7d8590; }
+      Button { background: #21262d; color: #e6edf3; border: solid #30363d; }
+      Button:hover { background: #00d4ff; color: #0d1117; }
+      Button:focus { border: solid #00d4ff; }
+      Input { background: #0d1117; color: #e6edf3; border: solid #30363d; }
+      Input:focus { border: solid #00d4ff; }
+      DataTable { background: #161b22; }
+      DataTable > .datatable--header { background: #21262d; color: #00d4ff; }
+      DataTable > .datatable--cursor { background: #1f6feb; }
+      ProgressBar > .bar--bar { color: #00d4ff; }
+      ProgressBar > .bar--complete { color: #10b981; }
+      Tabs { background: #161b22; }
+      Tab { color: #7d8590; }
+      Tab.-active { color: #00d4ff; border-bottom: solid #00d4ff; }
+      .title { color: #00d4ff; text-style: bold; }
+      .subtitle { color: #7d8590; }
+      .highlight { background: #1f6feb 20%; }
+      .card { background: #161b22; border: solid #30363d; padding: 1; margin: 0 0 1 0; }
+      .card:hover { border: solid #00d4ff; }
+
+  professional_light:
+    name: "Professional Light"
+    description: "Clean light theme for daytime use"
+    base: light
+    colors:
+      primary: "#0969da"
+      secondary: "#0550ae"
+      accent: "#cf222e"
+      success: "#1a7f37"
+      warning: "#9a6700"
+      error: "#cf222e"
+      surface: "#ffffff"
+      surface2: "#f6f8fa"
+      surface3: "#eaeef2"
+      border: "#d0d7de"
+      text: "#1f2328"
+      text_muted: "#636c76"
+      text_dim: "#8c959f"
+      xp_color: "#bf8700"
+    css: |
+      Screen { background: #ffffff; color: #1f2328; }
+      Header { background: #f6f8fa; color: #0969da; border-bottom: solid #d0d7de; }
+      Footer { background: #f6f8fa; color: #636c76; border-top: solid #d0d7de; }
+      .panel { background: #f6f8fa; border: solid #d0d7de; }
+      .accent { color: #0969da; }
+      .success { color: #1a7f37; }
+      .warning { color: #9a6700; }
+      .error { color: #cf222e; }
+      .xp { color: #bf8700; }
+      .muted { color: #636c76; }
+      Button { background: #f6f8fa; color: #1f2328; border: solid #d0d7de; }
+      Button:hover { background: #0969da; color: #ffffff; }
+      Input { background: #ffffff; color: #1f2328; border: solid #d0d7de; }
+      DataTable > .datatable--header { background: #eaeef2; color: #0969da; }
+      .title { color: #0969da; text-style: bold; }
+
+  nord:
+    name: "Nord"
+    description: "Arctic-inspired cool blue palette"
+    base: dark
+    colors:
+      primary: "#88c0d0"
+      secondary: "#81a1c1"
+      accent: "#bf616a"
+      success: "#a3be8c"
+      warning: "#ebcb8b"
+      error: "#bf616a"
+      surface: "#2e3440"
+      surface2: "#3b4252"
+      surface3: "#434c5e"
+      border: "#4c566a"
+      text: "#eceff4"
+      text_muted: "#d8dee9"
+      text_dim: "#4c566a"
+      xp_color: "#ebcb8b"
+    css: |
+      Screen { background: #2e3440; color: #eceff4; }
+      Header { background: #3b4252; color: #88c0d0; border-bottom: solid #4c566a; }
+      Footer { background: #3b4252; color: #d8dee9; border-top: solid #4c566a; }
+      .accent { color: #88c0d0; }
+      .success { color: #a3be8c; }
+      .warning { color: #ebcb8b; }
+      .error { color: #bf616a; }
+      .xp { color: #ebcb8b; }
+      Button { background: #434c5e; color: #eceff4; border: solid #4c566a; }
+      Button:hover { background: #88c0d0; color: #2e3440; }
+      DataTable > .datatable--header { background: #434c5e; color: #88c0d0; }
+      .title { color: #88c0d0; text-style: bold; }
+
+  dracula:
+    name: "Dracula"
+    description: "Dark theme with vivid purple accents"
+    base: dark
+    colors:
+      primary: "#bd93f9"
+      secondary: "#ff79c6"
+      accent: "#50fa7b"
+      success: "#50fa7b"
+      warning: "#ffb86c"
+      error: "#ff5555"
+      surface: "#282a36"
+      surface2: "#343746"
+      surface3: "#44475a"
+      border: "#6272a4"
+      text: "#f8f8f2"
+      text_muted: "#6272a4"
+      text_dim: "#44475a"
+      xp_color: "#f1fa8c"
+    css: |
+      Screen { background: #282a36; color: #f8f8f2; }
+      Header { background: #343746; color: #bd93f9; border-bottom: solid #6272a4; }
+      Footer { background: #343746; color: #6272a4; border-top: solid #6272a4; }
+      .accent { color: #bd93f9; }
+      .success { color: #50fa7b; }
+      .warning { color: #ffb86c; }
+      .error { color: #ff5555; }
+      .xp { color: #f1fa8c; }
+      Button { background: #44475a; color: #f8f8f2; border: solid #6272a4; }
+      Button:hover { background: #bd93f9; color: #282a36; }
+      DataTable > .datatable--header { background: #44475a; color: #bd93f9; }
+      .title { color: #bd93f9; text-style: bold; }
+
+  matrix:
+    name: "Matrix"
+    description: "Green on black — enter the Matrix"
+    base: dark
+    colors:
+      primary: "#00ff41"
+      secondary: "#00cc33"
+      accent: "#00ff41"
+      success: "#00ff41"
+      warning: "#ffff00"
+      error: "#ff0000"
+      surface: "#000000"
+      surface2: "#001a00"
+      surface3: "#003300"
+      border: "#006600"
+      text: "#00ff41"
+      text_muted: "#00aa2a"
+      text_dim: "#005500"
+      xp_color: "#ffff00"
+    css: |
+      Screen { background: #000000; color: #00ff41; }
+      Header { background: #001a00; color: #00ff41; border-bottom: solid #006600; }
+      Footer { background: #001a00; color: #00aa2a; border-top: solid #006600; }
+      .accent { color: #00ff41; }
+      .success { color: #00ff41; }
+      .warning { color: #ffff00; }
+      .error { color: #ff0000; }
+      .xp { color: #ffff00; }
+      Button { background: #003300; color: #00ff41; border: solid #006600; }
+      Button:hover { background: #00ff41; color: #000000; }
+      DataTable > .datatable--header { background: #003300; color: #00ff41; }
+      .title { color: #00ff41; text-style: bold; }
+
+  solarized:
+    name: "Solarized Dark"
+    description: "Ethan Schoonover's classic balanced palette"
+    base: dark
+    colors:
+      primary: "#268bd2"
+      secondary: "#2aa198"
+      accent: "#cb4b16"
+      success: "#859900"
+      warning: "#b58900"
+      error: "#dc322f"
+      surface: "#002b36"
+      surface2: "#073642"
+      surface3: "#094652"
+      border: "#586e75"
+      text: "#839496"
+      text_muted: "#657b83"
+      text_dim: "#586e75"
+      xp_color: "#b58900"
+    css: |
+      Screen { background: #002b36; color: #839496; }
+      Header { background: #073642; color: #268bd2; border-bottom: solid #586e75; }
+      Footer { background: #073642; color: #657b83; border-top: solid #586e75; }
+      .accent { color: #268bd2; }
+      .success { color: #859900; }
+      .warning { color: #b58900; }
+      .error { color: #dc322f; }
+      .xp { color: #b58900; }
+      Button { background: #073642; color: #839496; border: solid #586e75; }
+      Button:hover { background: #268bd2; color: #002b36; }
+      DataTable > .datatable--header { background: #073642; color: #268bd2; }
+      .title { color: #268bd2; text-style: bold; }
+
+  cyber:
+    name: "Cyber"
+    description: "Neon cyberpunk aesthetic"
+    base: dark
+    colors:
+      primary: "#ff00ff"
+      secondary: "#00ffff"
+      accent: "#ffff00"
+      success: "#00ff88"
+      warning: "#ff8800"
+      error: "#ff0055"
+      surface: "#0a0015"
+      surface2: "#15002a"
+      surface3: "#200040"
+      border: "#440088"
+      text: "#ff88ff"
+      text_muted: "#9944aa"
+      text_dim: "#440088"
+      xp_color: "#ffff00"
+    css: |
+      Screen { background: #0a0015; color: #ff88ff; }
+      Header { background: #15002a; color: #ff00ff; border-bottom: solid #440088; }
+      Footer { background: #15002a; color: #9944aa; border-top: solid #440088; }
+      .accent { color: #ff00ff; }
+      .success { color: #00ff88; }
+      .warning { color: #ff8800; }
+      .error { color: #ff0055; }
+      .xp { color: #ffff00; }
+      Button { background: #200040; color: #ff88ff; border: solid #440088; }
+      Button:hover { background: #ff00ff; color: #0a0015; }
+      DataTable > .datatable--header { background: #200040; color: #ff00ff; }
+      .title { color: #ff00ff; text-style: bold; }

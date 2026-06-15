@@ -1,0 +1,225 @@
+{
+  "ranks": [
+    {"level": 1,  "title": "Terminal Novice",     "icon": "🌱", "xp_required": 0},
+    {"level": 2,  "title": "Shell Apprentice",    "icon": "🔰", "xp_required": 500},
+    {"level": 3,  "title": "Pattern Hunter",      "icon": "🎯", "xp_required": 1200},
+    {"level": 4,  "title": "Regex Apprentice",    "icon": "🔮", "xp_required": 2500},
+    {"level": 5,  "title": "Text Wrangler",       "icon": "📝", "xp_required": 4500},
+    {"level": 6,  "title": "Pipeline Builder",    "icon": "🔗", "xp_required": 7000},
+    {"level": 7,  "title": "Pipeline Master",     "icon": "⚡", "xp_required": 10000},
+    {"level": 8,  "title": "Log Investigator",    "icon": "🔬", "xp_required": 14000},
+    {"level": 9,  "title": "Automation Expert",   "icon": "🤖", "xp_required": 19000},
+    {"level": 10, "title": "Linux Architect",     "icon": "🏗️",  "xp_required": 25000},
+    {"level": 11, "title": "VLSI Investigator",   "icon": "💎", "xp_required": 32000},
+    {"level": 12, "title": "ShellMentor Grandmaster","icon": "👑","xp_required": 50000}
+  ],
+  "achievements": [
+    {
+      "id": "first_lesson",
+      "title": "First Steps",
+      "description": "Complete your first lesson",
+      "icon": "🎉",
+      "xp_reward": 50,
+      "rarity": "common",
+      "trigger": "lessons_completed >= 1"
+    },
+    {
+      "id": "first_challenge",
+      "title": "Challenge Accepted",
+      "description": "Complete your first challenge",
+      "icon": "⚔️",
+      "xp_reward": 75,
+      "rarity": "common",
+      "trigger": "challenges_solved >= 1"
+    },
+    {
+      "id": "streak_3",
+      "title": "On a Roll",
+      "description": "Maintain a 3-day learning streak",
+      "icon": "🔥",
+      "xp_reward": 100,
+      "rarity": "common",
+      "trigger": "streak >= 3"
+    },
+    {
+      "id": "streak_7",
+      "title": "Week Warrior",
+      "description": "Maintain a 7-day learning streak",
+      "icon": "🔥🔥",
+      "xp_reward": 250,
+      "rarity": "uncommon",
+      "trigger": "streak >= 7"
+    },
+    {
+      "id": "streak_30",
+      "title": "Unstoppable",
+      "description": "Maintain a 30-day learning streak",
+      "icon": "🌟",
+      "xp_reward": 1000,
+      "rarity": "legendary",
+      "trigger": "streak >= 30"
+    },
+    {
+      "id": "grep_master",
+      "title": "Pattern Finder",
+      "description": "Complete all grep lessons",
+      "icon": "🔍",
+      "xp_reward": 200,
+      "rarity": "uncommon",
+      "trigger": "track_grep_complete"
+    },
+    {
+      "id": "awk_master",
+      "title": "Data Wrangler",
+      "description": "Complete all awk lessons",
+      "icon": "⚙️",
+      "xp_reward": 250,
+      "rarity": "uncommon",
+      "trigger": "track_awk_complete"
+    },
+    {
+      "id": "regex_wizard",
+      "title": "Regex Wizard",
+      "description": "Complete the Regex Academy track",
+      "icon": "🧙",
+      "xp_reward": 500,
+      "rarity": "rare",
+      "trigger": "track_regex_complete"
+    },
+    {
+      "id": "vlsi_investigator",
+      "title": "VLSI Investigator",
+      "description": "Complete the VLSI Text Processing track",
+      "icon": "⚡",
+      "xp_reward": 750,
+      "rarity": "rare",
+      "trigger": "track_vlsi_complete"
+    },
+    {
+      "id": "perfect_score",
+      "title": "Perfectionist",
+      "description": "Score 100% on a quiz without hints",
+      "icon": "💯",
+      "xp_reward": 150,
+      "rarity": "uncommon",
+      "trigger": "quiz_perfect_nohint"
+    },
+    {
+      "id": "speed_demon",
+      "title": "Speed Demon",
+      "description": "Complete a challenge in under 2 minutes",
+      "icon": "⚡",
+      "xp_reward": 200,
+      "rarity": "rare",
+      "trigger": "challenge_fast"
+    },
+    {
+      "id": "pipeline_architect",
+      "title": "Pipeline Architect",
+      "description": "Build a pipeline with 5 or more commands",
+      "icon": "🏗️",
+      "xp_reward": 300,
+      "rarity": "rare",
+      "trigger": "pipeline_5_commands"
+    },
+    {
+      "id": "mission_complete",
+      "title": "Mission Complete",
+      "description": "Complete your first mission",
+      "icon": "🎖️",
+      "xp_reward": 300,
+      "rarity": "uncommon",
+      "trigger": "missions_completed >= 1"
+    },
+    {
+      "id": "all_missions",
+      "title": "Veteran",
+      "description": "Complete all missions",
+      "icon": "🏅",
+      "xp_reward": 2000,
+      "rarity": "legendary",
+      "trigger": "all_missions_complete"
+    },
+    {
+      "id": "challenge_10",
+      "title": "Challenge Veteran",
+      "description": "Complete 10 challenges",
+      "icon": "🏆",
+      "xp_reward": 400,
+      "rarity": "rare",
+      "trigger": "challenges_solved >= 10"
+    },
+    {
+      "id": "xp_1000",
+      "title": "Rising Star",
+      "description": "Earn 1000 total XP",
+      "icon": "⭐",
+      "xp_reward": 100,
+      "rarity": "common",
+      "trigger": "total_xp >= 1000"
+    },
+    {
+      "id": "xp_5000",
+      "title": "Power User",
+      "description": "Earn 5000 total XP",
+      "icon": "🌟",
+      "xp_reward": 500,
+      "rarity": "uncommon",
+      "trigger": "total_xp >= 5000"
+    },
+    {
+      "id": "xp_25000",
+      "title": "Linux Legend",
+      "description": "Earn 25000 total XP",
+      "icon": "💫",
+      "xp_reward": 2500,
+      "rarity": "legendary",
+      "trigger": "total_xp >= 25000"
+    },
+    {
+      "id": "note_taker",
+      "title": "Diligent Student",
+      "description": "Create 5 notes",
+      "icon": "📓",
+      "xp_reward": 75,
+      "rarity": "common",
+      "trigger": "notes_created >= 5"
+    },
+    {
+      "id": "portfolio_published",
+      "title": "Published",
+      "description": "Generate and publish your portfolio",
+      "icon": "📢",
+      "xp_reward": 500,
+      "rarity": "rare",
+      "trigger": "portfolio_generated"
+    },
+    {
+      "id": "hint_free",
+      "title": "No Hints Needed",
+      "description": "Solve 5 challenges without using hints",
+      "icon": "🧠",
+      "xp_reward": 350,
+      "rarity": "rare",
+      "trigger": "challenges_nohint >= 5"
+    },
+    {
+      "id": "early_bird",
+      "title": "Early Bird",
+      "description": "Complete a lesson before 8 AM",
+      "icon": "🌅",
+      "xp_reward": 100,
+      "rarity": "uncommon",
+      "trigger": "lesson_before_8am"
+    },
+    {
+      "id": "night_owl",
+      "title": "Night Owl",
+      "description": "Complete a lesson after midnight",
+      "icon": "🦉",
+      "xp_reward": 100,
+      "rarity": "uncommon",
+      "trigger": "lesson_after_midnight"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+########################################################
+# Cadence Innovus Placement Report
+# Design: smart_soc_top
+# Date: 2026-06-10 02:58:14
+########################################################
+
+Floorplan Summary:
+------------------
+  Die Area:        2800 x 2800 um  (7.84 mm^2)
+  Core Area:       2600 x 2600 um  (6.76 mm^2)
+  Core Utilization:  68.4%
+  Total Instances:  18432
+  Fixed Instances:    241
+  Placed Instances: 18191
+
+Cell Density Report (10x10 grid):
+-----------------------------------
+  Max Density:    94.2%  (row 7, col 4)  [WARNING: > 85% threshold]
+  Avg Density:    68.4%
+  Min Density:    12.1%  (row 1, col 1)  [corner filler region]
+
+Congestion Report:
+------------------
+  Global Routing Overflow:
+    Horizontal:   2.1%  ACCEPTABLE
+    Vertical:     3.8%  ACCEPTABLE
+
+  Congested GCells (overflow > 0):
+    Total GCells:      2600
+    Congested GCells:    142  (5.5%)
+    Max Overflow:        +8   (at GCell 1240,1820)
+
+  Top Congestion Hotspots:
+    GCell (1240,1820)  H_OF=+8  V_OF=+3  [u_core/u_fpu region]
+    GCell (1244,1820)  H_OF=+6  V_OF=+2  [u_core/u_fpu region]
+    GCell (880,1200)   H_OF=+4  V_OF=+5  [u_mem/u_cache region]
+    GCell (884,1200)   H_OF=+3  V_OF=+4  [u_mem/u_cache region]
+    GCell (1600,400)   H_OF=+2  V_OF=+1  [u_io region]
+
+Macro Placement:
+----------------
+  Macro                         X      Y     W      H    Orient
+  -----------------------------------------------------------
+  u_mem/u_cache/SRAM_4KB_0    200    200  800    400    N
+  u_mem/u_cache/SRAM_4KB_1    200    620  800    400    N
+  u_mem/u_cache/SRAM_4KB_2   1050    200  800    400    N
+  u_mem/u_dram/PHY_DDR4       100   2200 2400    350    N
+  u_io/GPIO_PAD_RING            0      0 2600   2600    N  (boundary)
+
+Placement DRC:
+--------------
+  SPACING Violations:    0
+  OVERLAP Violations:    0
+  NOTCH Violations:      0
+  TOTAL DRC:             0  [CLEAN]
+
+Timing-Driven Placement Quality:
+---------------------------------
+  Pre-CTS WNS:   -1.244 ns  (estimated)
+  Pre-CTS TNS:  -22.810 ns  (estimated)
+  Setup Violations (estimated): 31
+
+  Critical Path Instances (top 5):
+    u_core/u_fpu/mantissa_reg[22]  ->  u_core/u_fpu/result_buf[22]
+    u_core/u_alu/reg_result[7]     ->  u_core/u_decode/inst_reg[7]
+    u_mem/u_cache/hit_way[1]       ->  u_core/u_lsu/cache_way[1]
+    u_core/u_fpu/exp_reg[10]       ->  u_core/u_fpu/norm_out[10]
+    u_core/u_alu/carry_out         ->  u_core/u_alu/status_c
+
+########################################################
+# End of Placement Report
+########################################################
