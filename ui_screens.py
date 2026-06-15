@@ -1025,9 +1025,9 @@ class AnalyticsScreen(BaseScreen):
     """
 
     def on_mount(self) -> None:
-        self._render()
+        self._render_analytics()
 
-    def _render(self) -> None:
+    def _render_analytics(self) -> None:
         """Render analytics dashboard synchronously."""
         scroll = self.query_one("#analytics-scroll", ScrollableContainer)
         scroll.remove_children()
