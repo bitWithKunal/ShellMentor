@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ================================================================
 #  ShellMentor v2.0.0  —  Professional Linux Learning Platform
-#  Author: Kunal Kumar
-#  LinkedIn: https://linkedin.com/in/kunal-kumar
-#  GitHub: https://github.com/shellmentor/shellmentor
+#  Author: Kunal Saraswat
+#  LinkedIn: https://www.linkedin.com/in/kunalsaraswat/
+#  GitHub: https://github.com/bitWithKunal/ShellMentor
 #  Usage: ./shellmentor.sh [--dev] [--install-only] [--help]
 # ================================================================
 
@@ -19,7 +19,7 @@ VERSION="2.0.0"
 AUTHOR="Kunal Saraswat"
 AUTHOR_EMAIL="kunalsaraswat30@gmail.com"
 LINKEDIN_URL="https://www.linkedin.com/in/kunalsaraswat/"
-GITHUB_URL="https://github.com/shellmentor/shellmentor"
+GITHUB_URL="https://github.com/bitWithKunal/ShellMentor"
 
 # ── Terminal colours ──────────────────────────────────────────
 R='\033[0;31m'   # red
@@ -53,6 +53,17 @@ banner() {
   echo ""
   echo -e "   ${D}Type './shellmentor.sh --help' for usage options${NC}"
   echo ""
+}
+
+# ── Goodbye message ────────────────────────────────────────────
+goodbye() {
+  echo ""
+  echo -e "  ${C}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "  ${G}✔${NC}  Thank you for using ${BOLD}ShellMentor${NC}"
+  echo -e "  ${D}  Keep practicing! Type 'shellmentor' to continue your learning journey.${NC}"
+  echo -e "  ${C}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo ""
+  exit 0
 }
 
 # ── Logging helpers ───────────────────────────────────────────
@@ -185,7 +196,6 @@ check_system_tools() {
       read -rp "  Install optional tools now? (y/N): " choice
       if [[ "${choice,,}" == "y" ]] || [[ "${choice,,}" == "yes" ]]; then
         section "Installing Optional Tools"
-        # Run apt install without pipefail causing exit
         set +e
         eval "$install_cmd" 2>&1 | head -20
         local exit_code=$?
@@ -203,11 +213,12 @@ check_system_tools() {
   echo ""
 }
 
-# ── Shell integration ─────────────────────────────────────────
+# ── Shell integration (Improved) ──────────────────────────────
 install_to_shellrc() {
   local shell_rc=""
   local current_shell=$(basename "$SHELL")
   
+  # Detect the correct rc file
   case "$current_shell" in
     bash)
       shell_rc="$HOME/.bashrc"
@@ -223,26 +234,35 @@ install_to_shellrc() {
       ;;
   esac
   
-  local marker="# ShellMentor - Professional Linux Learning Platform"
-  local alias_line="alias shellmentor='bash \"$SHELLMENTOR_CMD\"'"
-  
-  if grep -q "ShellMentor" "$shell_rc" 2>/dev/null; then
-    return 0
+  # Check if file exists, create if not
+  if [[ ! -f "$shell_rc" ]]; then
+    touch "$shell_rc"
   fi
-
-  echo "" >> "$shell_rc"
-  echo "$marker" >> "$shell_rc"
-  echo "$alias_line" >> "$shell_rc"
-  echo "export PATH=\"\$PATH:$SCRIPT_DIR\"" >> "$shell_rc"
-
+  
+  local marker_start="# >>> ShellMentor - Professional Linux Learning Platform >>>"
+  local marker_end="# <<< ShellMentor >>>"
+  
+  # Remove old entries if they exist (cleanup)
+  sed -i.bak "/# >>> ShellMentor/,/# <<< ShellMentor/d" "$shell_rc" 2>/dev/null || true
+  
+  # Add new entries
+  {
+    echo ""
+    echo "$marker_start"
+    echo "export SHELLMENTOR_HOME=\"$SCRIPT_DIR\""
+    echo "alias shellmentor='bash \"$SHELLMENTOR_CMD\"'"
+    echo "export PATH=\"\$PATH:$SCRIPT_DIR\""
+    echo "$marker_end"
+  } >> "$shell_rc"
+  
   ok "Added 'shellmentor' alias to $shell_rc"
-  info "Run 'source $shell_rc' or open a new terminal to use it"
+  info "Run 'source $shell_rc' or open a new terminal to use 'shellmentor' from anywhere"
 }
 
 # ── Launch ────────────────────────────────────────────────────
 launch() {
   section "Launching ShellMentor"
-  ok "Starting ShellMentor ....Learn well"
+  ok "Starting ShellMentor ..."
   echo ""
   cd "$SCRIPT_DIR"
   exec "$VENV_DIR/bin/python" -u main.py "$@"
@@ -252,6 +272,7 @@ launch() {
 show_version() {
   echo -e "  ${C}ShellMentor${NC} version ${W}${VERSION}${NC}"
   echo -e "  ${D}Author:${NC}  ${AUTHOR}"
+  echo -e "  ${D}Email:${NC}   ${AUTHOR_EMAIL}"
   echo -e "  ${D}LinkedIn:${NC} ${LINKEDIN_URL}"
   echo -e "  ${D}GitHub:${NC}  ${GITHUB_URL}"
   echo ""
@@ -277,8 +298,16 @@ show_help() {
   echo ""
 }
 
+# ── Quit with goodbye message ─────────────────────────────────
+quit_with_goodbye() {
+  goodbye
+}
+
 # ── Main ──────────────────────────────────────────────────────
 main() {
+  # Handle interrupt and quit signals
+  trap 'quit_with_goodbye' INT TERM
+  
   banner
 
   case "${1:-}" in
@@ -336,7 +365,6 @@ main() {
   esac
 }
 
-# Trap Ctrl+C for clean exit
-trap 'echo -e "\n  ${Y}⚠${NC}  Interrupted by user"; exit 130' INT
-
+# After main exits (normal quit), show goodbye
 main "$@"
+goodbye
