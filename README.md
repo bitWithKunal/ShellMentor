@@ -15,8 +15,6 @@ A professional-grade, interactive terminal-based learning platform for mastering
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
 - [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 - [Project Roadmap](#project-roadmap)
 - [License](#license)
 - [Support](#support)
@@ -48,6 +46,74 @@ ShellMentor eliminates the fragmentation of Linux learning by providing an integ
 4. Comprehensive progress tracking and analytics
 5. Achievement-based motivation and gamification
 6. Persistent user state and learning history
+
+---
+
+## Screenshots
+
+> All screenshots are taken from ShellMentor v2.0.0 running on Linux.
+
+### Lessons — Structured Curriculum Delivery
+
+Interactive lesson content with syntax-highlighted examples and inline command walkthroughs.
+
+![Lessons - Regex Pattern Mastery](screenshots/2.png)
+
+---
+
+### Playground — Live Command Practice Environment
+
+Workspace files, real datasets, and a pipeline-ready terminal for hands-on experimentation.
+
+![Playground - Command Execution Environment](screenshots/3.png)
+
+---
+
+### Challenges — Skill Validation Exercises
+
+Browse and launch scored challenges across difficulty tiers, each mapped to real-world scenarios.
+
+![Challenges - IP Extractor](screenshots/4.png)
+
+---
+
+### Missions — Multi-Stage Learning Objectives
+
+Complex, narrative-framed missions that chain multiple skills into cohesive workflows.
+
+![Missions - Security Analyst](screenshots/6.png)
+
+---
+
+### Achievements — Gamification & Badges
+
+Tiered achievement system (Legendary, Rare, Uncommon, Common) with XP rewards and unlock criteria.
+
+![Achievements Dashboard](screenshots/7.png)
+
+---
+
+### Notes — Personal Knowledge Repository
+
+In-app notepad with search, save, and export functionality for capturing command learnings.
+
+![Notes Module](screenshots/8.png)
+
+---
+
+### Analytics — Learning Statistics Dashboard
+
+Progress breakdowns by challenge difficulty, most-used commands, and lessons per track.
+
+![Analytics Dashboard](screenshots/10.png)
+
+---
+
+### Settings — Profile & Theme Configuration
+
+Username management, theme selection (Dracula, and more), and GitHub integration configuration.
+
+![Settings - Configure ShellMentor](screenshots/12.png)
 
 ---
 
@@ -1088,177 +1154,6 @@ class ProgressEngine:
     def generate_portfolio() -> tuple[str, str]
 ```
 
----
-
-## Troubleshooting
-
-### Common Installation Issues
-
-#### Issue: Python Version Incompatibility
-
-**Symptom**: `ShellMentor requires Python 3.10+` error
-
-**Resolution**:
-```bash
-# Check installed Python version
-python3 --version
-
-# If below 3.10, install compatible version
-# Ubuntu/Debian:
-sudo apt-get update
-sudo apt-get install python3.10 python3.10-venv
-
-# Use specific Python version
-python3.10 -m venv .venv
-```
-
-#### Issue: Dependency Installation Failure
-
-**Symptom**: `ERROR: Could not find a version that satisfies the requirement`
-
-**Resolution**:
-```bash
-# Upgrade pip, setuptools, wheel
-pip install --upgrade pip setuptools wheel
-
-# Clear pip cache
-pip cache purge
-
-# Retry installation with specific version constraints
-pip install -r requirements.txt --no-cache-dir
-```
-
-#### Issue: Permission Denied on Linux
-
-**Symptom**: `Permission denied: 'shellmentor.sh'`
-
-**Resolution**:
-```bash
-# Make script executable
-chmod +x shellmentor.sh
-
-# Or run directly with Python
-python main.py
-```
-
-### Runtime Issues
-
-#### Issue: Terminal Display Rendering Problems
-
-**Symptom**: Garbled text or missing UI elements
-
-**Solution**:
-- Ensure terminal width is at least 80 columns
-- Update terminal emulator to latest version
-- Check terminal color support: `echo $TERM`
-- Try different terminal: gnome-terminal, xterm, alacritty
-
-#### Issue: Command Execution Errors
-
-**Symptom**: Commands fail in playground with unclear error messages
-
-**Debug Steps**:
-```bash
-# Check shell availability
-which bash
-which sh
-
-# Verify command exists
-which grep
-which sed
-which awk
-
-# Test command outside ShellMentor
-echo "test" | grep "pattern"
-```
-
-#### Issue: Data Corruption
-
-**Symptom**: Progress not saving or loading correctly
-
-**Recovery Procedure**:
-```bash
-# Check data file integrity
-python -m json.tool ~/.shellmentor/progress.json
-
-# Restore from backup if available
-cp ~/.shellmentor/progress.json.bak ~/.shellmentor/progress.json
-
-# Or reset to defaults
-rm ~/.shellmentor/progress.json
-# (Restart application to regenerate)
-```
-
-### Performance Issues
-
-#### Slow Application Launch
-
-**Diagnosis**:
-```bash
-# Profile startup time
-time python main.py
-
-# Check system resources
-free -h
-top -b -n 1
-```
-
-**Optimization**:
-- Reduce lesson data loading (archive old lessons)
-- Check disk I/O performance
-- Clear application cache
-- Restart terminal session
-
-#### High Memory Usage
-
-**Investigation**:
-```bash
-# Monitor memory usage
-ps aux | grep python
-# or
-top -p $(pgrep -f "python main.py")
-```
-
-**Resolution**:
-- Close unused applications
-- Increase system swap
-- Update to latest Textual version
-- Report memory leak to issue tracker
-
-### Platform-Specific Issues
-
-#### macOS Compatibility
-
-**Issue**: Terminal formatting issues
-
-**Solution**:
-```bash
-# Install compatible terminal
-brew install alacritty
-
-# Or use iTerm2
-# Verify locale settings
-locale -a | grep -i utf
-```
-
-#### Windows WSL2 Compatibility
-
-**Issue**: Path resolution errors
-
-**Solution**:
-```bash
-# Ensure WSL2 is installed
-wsl --list --verbose
-
-# Install Python in WSL2
-sudo apt-get update
-sudo apt-get install python3.10 python3.10-venv python3-pip
-
-# Set file permissions correctly
-umask 0077
-```
-
----
 
 ## Contributing
 
@@ -1283,81 +1178,7 @@ pip install -r requirements.txt
 pip install pytest pytest-cov black flake8 mypy
 ```
 
-#### Code Quality Standards
 
-ShellMentor enforces strict code quality standards:
-
-```bash
-# Format code with black
-black *.py
-
-# Lint with flake8
-flake8 *.py --max-line-length=120
-
-# Type checking with mypy
-mypy *.py --ignore-missing-imports
-
-# Run test suite
-pytest -v --cov=.
-```
-
-### Contribution Workflow
-
-#### Step 1: Create Feature Branch
-
-```bash
-git checkout -b feature/descriptive-feature-name
-```
-
-Branch naming conventions:
-- `feature/module-description` - New features
-- `bugfix/issue-description` - Bug fixes
-- `docs/documentation-improvement` - Documentation
-- `refactor/code-improvement` - Code refactoring
-
-#### Step 2: Implement Changes
-
-Follow PEP 8 style guidelines:
-- 4-space indentation
-- Maximum line length: 120 characters
-- Comprehensive docstrings (Google style)
-- Type hints for all functions
-- Meaningful variable names
-
-#### Step 3: Add Tests
-
-```python
-# tests/test_data_manager.py
-import pytest
-from data_manager import DataManager
-
-class TestDataManager:
-    def test_load_lessons(self):
-        dm = DataManager()
-        lessons = dm.load_lessons()
-        assert len(lessons) > 0
-        assert lessons[0]['id'] is not None
-
-    def test_get_progress(self):
-        dm = DataManager()
-        progress = dm.get_progress()
-        assert 'level' in progress
-        assert 'total_xp' in progress
-```
-
-#### Step 4: Commit Changes
-
-```bash
-# Commit with descriptive message
-git commit -m "Feature: Add custom lesson creation capability
-
-- Implement lesson schema validation
-- Add lesson loading from custom files
-- Include comprehensive error handling
-- Add documentation and examples
-
-Fixes #123"
-```
 
 Commit message guidelines:
 - First line: Present tense, descriptive summary
@@ -1433,43 +1254,7 @@ All pull requests undergo review:
 - Achievement system
 - Basic analytics
 
-### Version 1.1 (Planned - Q3 2024)
 
-- Advanced shell scripting track
-- Expanded VLSI curriculum
-- Performance optimizations
-- Enhanced analytics dashboards
-- User feedback integration
-
-### Version 1.2 (Planned - Q4 2024)
-
-- Git learning track
-- Docker fundamentals track
-- Community features (leaderboards)
-- Portfolio export enhancements
-- API for third-party integration
-
-### Version 2.0 (Planned - Q2 2025)
-
-- Web-based interface
-- Mobile companion app
-- Collaborative learning features
-- Advanced AI-powered hints
-- Real-time code review integration
-- Cloud progress synchronization
-- Enterprise user management
-
-### Long-term Vision (2025+)
-
-- Machine learning-based personalized learning paths
-- Real-time collaborative sessions
-- Industry partnership integrations
-- Certification program support
-- Academic institution licensing
-- Multilingual support
-- Custom learning pathway builder
-
----
 
 ## License
 
@@ -1478,7 +1263,7 @@ ShellMentor is released under the MIT License. See LICENSE file for full details
 ```
 MIT License
 
-Copyright (c) 2024 Kunal Saraswat
+Copyright (c) 2026 Kunal Saraswat
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1519,48 +1304,6 @@ governing permissions and limitations under the License.
 - **LinkedIn**: https://www.linkedin.com/in/kunalsaraswat/
 - **Issue Tracker**: https://github.com/bitWithKunal/ShellMentor/issues
 
-### Bug Reporting
-
-When reporting bugs, include:
-
-1. **System Information**
-   ```
-   - Operating System: Ubuntu 22.04 LTS
-   - Python Version: 3.10.5
-   - Terminal: gnome-terminal
-   - ShellMentor Version: 1.0.0
-   ```
-
-2. **Reproducible Steps**
-   ```
-   1. Launch application
-   2. Navigate to Lessons
-   3. Click on Lesson 5
-   4. Observe error message
-   ```
-
-3. **Expected vs Actual Behavior**
-   ```
-   Expected: Lesson content displays correctly
-   Actual: Application crashes with AttributeError
-   ```
-
-4. **Error Output**
-   ```
-   [Include full stack trace and error messages]
-   [Include application logs from ~/.shellmentor.log]
-   ```
-
-### Feature Requests
-
-Feature requests should include:
-
-1. **Clear Description**: What feature is needed and why
-2. **Use Case**: Real-world scenario where feature applies
-3. **Example Implementation**: Suggested approach (optional)
-4. **Related Issues**: Links to similar requests
-
----
 
 ## Acknowledgements
 
@@ -1581,10 +1324,10 @@ Special thanks to all contributors who improve ShellMentor through code, documen
 If ShellMentor has been useful in your learning journey, please consider citing it:
 
 ```bibtex
-@software{shellmentor2024,
+@software{shellmentor2026,
   title={ShellMentor: Professional Linux Command-Line Learning Platform},
   author={Saraswat, Kunal},
-  year={2024},
+  year={2026},
   url={https://github.com/bitWithKunal/ShellMentor},
   version={1.0.0}
 }
@@ -1594,4 +1337,4 @@ If ShellMentor has been useful in your learning journey, please consider citing 
 
 **ShellMentor - Master Linux Command-Line Proficiency Through Structured, Practical Education**
 
-Last Updated: June 2024
+Last Updated: June 2026
