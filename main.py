@@ -6,12 +6,16 @@ global keybindings, event wiring, and first-run flow.
 
 from __future__ import annotations
 
+import getpass
 import logging
+import os
 import sys
+import time
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.theme import Theme
 from textual.widgets import Footer, Header, Static, Label, ListItem, ListView, Input
 from textual.containers import Container, Horizontal, Vertical
 from textual import on
@@ -46,6 +50,69 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("shellmentor")
+
+
+# ──────────────────────── OS username detection ────────────────────────
+
+def detect_system_username() -> str:
+    """Return the real Linux account name, with graceful fallbacks."""
+    for getter in (
+        lambda: os.environ.get("USER"),
+        lambda: os.environ.get("LOGNAME"),
+        lambda: getpass.getuser(),
+    ):
+        try:
+            name = getter()
+            if name:
+                return str(name).strip()
+        except Exception:
+            continue
+    return "Learner"
+
+
+# ──────────────────────── Theme registry ────────────────────────
+
+def build_themes() -> dict[str, Theme]:
+    """Build Textual Theme objects from themes/themes.yaml.
+
+    Falls back to sensible defaults if the file is missing so Settings always
+    has something to show.
+    """
+    themes: dict[str, Theme] = {}
+    try:
+        data = load_yaml(THEMES_DIR / "themes.yaml") or {}
+    except Exception as e:
+        logger.warning(f"Could not load themes.yaml: {e}")
+        data = {}
+
+    for theme_id, spec in data.get("themes", {}).items():
+        colors = spec.get("colors", {})
+        base = spec.get("base", "dark")
+        try:
+            themes[theme_id] = Theme(
+                name=theme_id,
+                primary=colors.get("primary", "#00d4ff"),
+                secondary=colors.get("secondary", "#0099cc"),
+                accent=colors.get("accent", "#ff6b35"),
+                success=colors.get("success", "#10b981"),
+                warning=colors.get("warning", "#f59e0b"),
+                error=colors.get("error", "#ef4444"),
+                foreground=colors.get("text", "#e6edf3"),
+                background=colors.get("surface", "#0d1117"),
+                surface=colors.get("surface2", "#161b22"),
+                panel=colors.get("surface3", "#21262d"),
+                dark=(base != "light"),
+                variables={
+                    "border": colors.get("border", "#30363d"),
+                    "text-muted": colors.get("text_muted", "#7d8590"),
+                    "text-dim": colors.get("text_dim", "#484f58"),
+                    "xp-color": colors.get("xp_color", "#ffd700"),
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Skipping theme '{theme_id}': {e}")
+
+    return themes
 
 
 # ──────────────────────── CSS ────────────────────────
@@ -397,6 +464,16 @@ class ShellMentorApp(App):
         self._selected_mission:   str | None = None
         self._achievement_queue:  list[dict] = []
 
+        # Session time tracking (feeds the live "Time" stat on the dashboard)
+        self._session_start: float = time.monotonic()
+        self._session_timer = None
+
+        # Pre-build all Textual Theme objects from themes.yaml
+        self._theme_registry: dict[str, Theme] = build_themes()
+
+        # Sync real Linux username into DB on first launch
+        self._sync_system_username()
+
         # Wire gamification callbacks
         self.progress_engine.on_achievement(self._on_achievement)
         self.progress_engine.on_levelup(self._on_levelup)
@@ -404,16 +481,81 @@ class ShellMentorApp(App):
         # Update streak on launch
         self.db.update_streak()
 
+    # ── Theme helpers ─────────────────────────────────────────
+
+    def _sync_system_username(self) -> None:
+        """Replace the 'Learner' placeholder with the real OS account name."""
+        try:
+            current = (self.db.get_user().get("username") or "").strip()
+            if current in ("", "Learner"):
+                real = detect_system_username()
+                if real and real != current:
+                    self.db.update_user(username=real)
+        except Exception as e:
+            logger.warning(f"Could not sync system username: {e}")
+
+    def theme_ids(self) -> list[str]:
+        """Ordered list of available theme IDs for the Settings dropdown."""
+        return list(self._theme_registry.keys())
+
+    def apply_saved_theme(self) -> None:
+        """Read the DB-persisted theme and apply it live to the app."""
+        theme_id = self.db.get_theme()
+        if theme_id not in self._theme_registry:
+            theme_id = next(iter(self._theme_registry), "textual-dark")
+        try:
+            self.theme = theme_id
+        except Exception as e:
+            logger.warning(f"Could not apply saved theme '{theme_id}': {e}")
+
+    def set_and_apply_theme(self, theme_id: str) -> bool:
+        """Persist and apply a theme live.  Returns True on success."""
+        if theme_id not in self._theme_registry:
+            return False
+        self.db.set_theme(theme_id)
+        try:
+            self.theme = theme_id
+            return True
+        except Exception as e:
+            logger.warning(f"Theme switch failed for '{theme_id}': {e}")
+            return False
+
+    # ── Session timer ─────────────────────────────────────────
+
+    def _flush_session_time(self) -> None:
+        """Write full elapsed minutes to the DB; keep the remainder."""
+        try:
+            elapsed = time.monotonic() - self._session_start
+            if elapsed >= 60:
+                minutes = int(elapsed // 60)
+                self.db.increment_progress(time_spent_mins=minutes)
+                self._session_start += minutes * 60
+        except Exception as e:
+            logger.warning(f"Session time flush failed: {e}")
+
     def compose(self) -> ComposeResult:
         """Compose the base layout - only Header and Footer."""
         yield Header(show_clock=True)
         yield Footer()
 
     def on_mount(self) -> None:
-        """Called when the app is mounted - push the initial screens."""
+        """Register themes, start session timer, push initial screens."""
+        # Register all themes with Textual so self.theme = id works live
+        for theme in self._theme_registry.values():
+            try:
+                self.register_theme(theme)
+            except Exception as e:
+                logger.warning(f"Could not register theme '{theme.name}': {e}")
+
+        # Apply the theme saved in DB (live, no restart needed)
+        self.apply_saved_theme()
+
+        # Flush accrued session time to DB every 30 s
+        self._session_timer = self.set_interval(30.0, self._flush_session_time)
+
         # Push dashboard as the main screen
         self.push_screen(DashboardScreen())
-        
+
         # Show environment scan on first launch (no commands executed yet)
         if self.db.get_progress().get("commands_executed", 0) == 0:
             system_info = detect_system()
@@ -530,8 +672,13 @@ class ShellMentorApp(App):
 
     # ── Quit ──────────────────────────────────────────────────
 
+    def on_unmount(self) -> None:
+        """Persist remaining session time when the app exits."""
+        self._flush_session_time()
+
     def action_quit(self) -> None:
         """Quit the application gracefully."""
+        self._flush_session_time()
         self.db.close()
         self.exit()
 

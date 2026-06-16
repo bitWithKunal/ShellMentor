@@ -116,12 +116,11 @@ class DashboardScreen(BaseScreen):
         next_rank = app.progress_engine.get_next_rank_info()
         recommended = app.learning_engine.get_recommended_next()
 
-        # Resolve username
+        # Resolve username — synced from the real OS account on first launch
         try:
-            user_row = app.db.conn.execute("SELECT username FROM user LIMIT 1").fetchone()
-            username = user_row[0] if user_row and user_row[0] else "Shell Hacker"
+            username = (app.db.get_user().get("username") or "").strip() or "Learner"
         except Exception:
-            username = "Shell Hacker"
+            username = "Learner"
 
         body = self.query_one("#dash-body", Static)
 
@@ -165,7 +164,11 @@ class DashboardScreen(BaseScreen):
 
         acc = stats.get("accuracy", 0) or 0
         ac = "green" if acc >= 70 else "yellow" if acc >= 40 else "red"
-        time_ = format_duration(stats["time_spent"] * 60)
+        # Stored minutes + live in-memory elapsed so the clock ticks every second
+        import time as _time
+        stored_secs = stats["time_spent"] * 60
+        live_secs = max(0, _time.monotonic() - getattr(self.app, "_session_start", _time.monotonic()))
+        time_ = format_duration(stored_secs + live_secs)
         ach_e = stats["achievements_earned"]
         ach_t = stats["achievements_total"]
 
@@ -235,9 +238,9 @@ class DashboardScreen(BaseScreen):
   {sep}
 
   [cyan]╔══════════╗[/cyan]  [green]╔══════════╗[/green]  [yellow]╔══════════╗[/yellow]  [magenta]╔══════════╗[/magenta]  [white]╔══════════╗[/white]  [blue]╔══════════╗[/blue]  [{ac}]╔══════════╗[/{ac}]
-  [cyan]║ {stats['lessons']:>3}      ║[/cyan]  [green]║ {stats['challenges']:>3}      ║[/green]  [yellow]║ {stats['missions']:>3}      ║[/yellow]  [magenta]║ {ach_e:>2}/{ach_t:<2}    ║[/magenta]  [white]║ {stats['commands_run']:>5}    ║[/white]  [blue] ║ {time_:>6}   ║[/blue]  [{ac}]║ {acc:>5.1f}% ║[/{ac}]
+  [cyan]║ {stats['lessons']:>3}      ║[/cyan]  [green]║ {stats['challenges']:>3}      ║[/green]  [yellow]║ {stats['missions']:>3}      ║[/yellow]  [magenta]║ {ach_e:>2}/{ach_t:<2}    ║[/magenta]  [white]║ {stats['commands_run']:>5}    ║[/white]  [blue]║ {time_:>6}   ║[/blue]  [{ac}]║ {acc:>5.1f}%   ║[/{ac}]
   [cyan]╚══════════╝[/cyan]  [green]╚══════════╝[/green]  [yellow]╚══════════╝[/yellow]  [magenta]╚══════════╝[/magenta]  [white]╚══════════╝[/white]  [blue]╚══════════╝[/blue]  [{ac}]╚══════════╝[/{ac}]
-  [dim]  Lessons    Challenges   Missions   Achievements   Commands     Time       Accuracy[/dim]
+  [dim]  Lessons      Challenges     Missions     Achievements   Commands      Time          Accuracy[/dim]
 
   {sep}
 
@@ -1206,221 +1209,226 @@ class SettingsScreen(BaseScreen):
     """
 
     def on_mount(self) -> None:
-        self._build_settings()
+        self.run_worker(self._build_settings_async(), exclusive=True)
+
+    async def _build_settings_async(self) -> None:
+        """Rebuild settings — runs in a worker so remove_children awaits properly."""
+        scroll = self.query_one("#settings-scroll", ScrollableContainer)
+        await scroll.remove_children()
+        await self._mount_settings_widgets(scroll)
 
     def _build_settings(self) -> None:
-        """Build settings UI synchronously."""
-        scroll = self.query_one("#settings-scroll", ScrollableContainer)
-        scroll.remove_children()
+        """Sync entry point used by call_after_refresh; triggers async rebuild."""
+        self.run_worker(self._build_settings_async(), exclusive=True)
+
+    async def _mount_settings_widgets(self, scroll: ScrollableContainer) -> None:
+        """Build and mount all settings widgets into *scroll*."""
 
         user = self.app.db.get_user()
         current_theme = user.get("theme", "professional_dark")
 
-        # Get available themes
-        themes_data = load_yaml(THEMES_DIR / "themes.yaml")
-        theme_list = list(themes_data.get("themes", {}).keys()) if themes_data else []
-
-        # Build theme options
-        theme_options = []
-        if theme_list:
-            for theme in theme_list:
-                display_name = theme.replace('_', ' ').title()
-                theme_options.append((theme, display_name))
+        # Prefer the app's registered theme ids (includes all YAML themes)
+        if hasattr(self.app, "theme_ids"):
+            theme_list = list(self.app.theme_ids())
         else:
-            # Fallback themes if themes.yaml not found
-            theme_options = [
-                ("professional_dark", "Professional Dark"),
-                ("professional_light", "Professional Light"),
-                ("nord", "Nord"),
-                ("dracula", "Dracula"),
-                ("matrix", "Matrix"),
-                ("solarized", "Solarized"),
-                ("cyber", "Cyber"),
+            themes_data = load_yaml(THEMES_DIR / "themes.yaml")
+            theme_list = list((themes_data or {}).get("themes", {}).keys())
+
+        # Fallback so the dropdown always has options
+        if not theme_list:
+            theme_list = [
+                "professional_dark", "professional_light", "nord",
+                "dracula", "matrix", "solarized", "cyber",
             ]
-            theme_list = [t[0] for t in theme_options]
 
-        # Validate current_theme
+        # Validate saved theme
         if current_theme not in theme_list:
-            current_theme = theme_list[0] if theme_list else "professional_dark"
+            current_theme = theme_list[0]
 
-        # Build all widgets in a list
+        # Select expects (label, value) — value MUST be the theme id
+        theme_options = [
+            (t.replace("_", " ").title(), t) for t in theme_list
+        ]
+
+        # Build all widgets
         widget_list = []
 
-        # Header
-        widget_list.append(Static("\n  [bold cyan]SETTINGS[/]  [dim]Configure ShellMentor[/]\n"))
+        # ── Header ──
+        widget_list.append(Static("\n  [bold cyan]⚙  SETTINGS[/]  [dim]Configure ShellMentor[/]\n"))
         widget_list.append(Rule())
 
-        # PROFILE SECTION
-        widget_list.append(Static("\n  [bold]PROFILE[/]", classes="settings-section-header"))
+        # ── PROFILE ──
+        widget_list.append(Static("\n  [bold cyan]👤  PROFILE[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
-        widget_list.append(Static("  USERNAME", classes="settings-label"))
+        widget_list.append(Static("  Display Name", classes="settings-label"))
+        widget_list.append(Static(
+            "  This name appears on the dashboard and in your portfolio.",
+            classes="settings-hint"
+        ))
         widget_list.append(Input(
             value=user.get("username", "Learner"),
-            placeholder="Enter your name",
-            id="username-input"
+            placeholder="Enter your display name",
+            id="username-input",
         ))
-        widget_list.append(Button("Save Username", id="save-username", variant="primary"))
+        widget_list.append(Button("💾  Save Username", id="save-username", variant="primary"))
         widget_list.append(Static(""))
 
-        # APPEARANCE SECTION
+        # ── APPEARANCE ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold]APPEARANCE[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold cyan]🎨  APPEARANCE[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
-        widget_list.append(Static("  THEME", classes="settings-label"))
-        widget_list.append(Static("  Select the color scheme for the interface", classes="settings-hint"))
+        widget_list.append(Static("  Theme", classes="settings-label"))
+        widget_list.append(Static(
+            "  Pick a colour scheme — the preview updates live as you select.",
+            classes="settings-hint"
+        ))
 
         theme_select = Select(
             theme_options,
             id="theme-select",
             prompt="Choose a theme",
             allow_blank=False,
+            value=current_theme,
         )
         widget_list.append(theme_select)
-        widget_list.append(Button("Apply Theme", id="apply-theme", variant="primary"))
+        widget_list.append(Button("✅  Apply & Save Theme", id="apply-theme", variant="success"))
         widget_list.append(Static(""))
 
-        # GITHUB INTEGRATION SECTION
+        # Current theme info row
+        widget_list.append(Static(
+            f"  [dim]Current saved theme:[/dim]  [cyan]{current_theme.replace('_',' ').title()}[/cyan]",
+            id="current-theme-label",
+        ))
+        widget_list.append(Static(""))
+
+        # ── GITHUB ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold]GITHUB INTEGRATION[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold cyan]🐙  GITHUB INTEGRATION[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
 
         if self.app.github_sync.is_authenticated:
             gh_user = self.app.github_sync.github_username
-            widget_list.append(Static(f"  Connected as: @{gh_user}", classes="settings-label"))
-            widget_list.append(Static("  Your portfolio can be published to GitHub Pages", classes="settings-hint"))
-            widget_list.append(Button("Publish Portfolio", id="publish-portfolio", variant="success"))
-            widget_list.append(Button("Disconnect GitHub", id="gh-disconnect", variant="error"))
+            widget_list.append(Static(f"  ✔  Connected as [bold cyan]@{gh_user}[/]", classes="settings-label"))
+            widget_list.append(Static("  Publish your learning portfolio to GitHub Pages.", classes="settings-hint"))
+            widget_list.append(Button("🚀  Publish Portfolio", id="publish-portfolio", variant="success"))
+            widget_list.append(Button("🔌  Disconnect GitHub", id="gh-disconnect", variant="error"))
         else:
-            widget_list.append(Static("  Not Connected", classes="settings-label"))
-            widget_list.append(
-                Static("  Authenticate with GitHub to publish your learning portfolio", classes="settings-hint"))
-            widget_list.append(Input(
-                placeholder="GitHub Personal Access Token (repo scope required)",
-                id="pat-input",
-                password=True
+            widget_list.append(Static("  Not connected", classes="settings-label"))
+            widget_list.append(Static(
+                "  Enter a GitHub Personal Access Token (repo scope) to publish your portfolio.",
+                classes="settings-hint"
             ))
-            widget_list.append(Button("Connect with Token", id="gh-pat", variant="primary"))
+            widget_list.append(Input(
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx",
+                id="pat-input",
+                password=True,
+            ))
+            widget_list.append(Button("🔑  Connect with Token", id="gh-pat", variant="primary"))
 
         widget_list.append(Static(""))
 
-        # DATA MANAGEMENT SECTION
+        # ── DATA MANAGEMENT ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold]DATA MANAGEMENT[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold cyan]🗄  DATA MANAGEMENT[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
-        widget_list.append(Static("  DATABASE LOCATION", classes="settings-label"))
+        widget_list.append(Static("  Database Location", classes="settings-label"))
         widget_list.append(Static(f"  [dim]{self.app.db.db_path}[/dim]", classes="settings-hint"))
-        widget_list.append(
-            Static("  All progress, notes, and achievements are stored locally", classes="settings-hint"))
-        widget_list.append(Button("Export Portfolio", id="export-portfolio", variant="primary"))
-        widget_list.append(Button("Reset Progress", id="reset-progress", variant="error"))
+        widget_list.append(Static(
+            "  All progress, notes and achievements are stored locally on your machine.",
+            classes="settings-hint"
+        ))
+        widget_list.append(Button("📄  Export Portfolio (Markdown)", id="export-portfolio", variant="primary"))
+        widget_list.append(Button("⚠  Reset All Progress", id="reset-progress", variant="error"))
         widget_list.append(Static(""))
 
-        # KEYBOARD SHORTCUTS SECTION
+        # ── KEYBOARD SHORTCUTS ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold]KEYBOARD SHORTCUTS[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold cyan]⌨  KEYBOARD SHORTCUTS[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
 
-        # Navigation Shortcuts
-        widget_list.append(Static("  NAVIGATION", classes="settings-label"))
-        widget_list.append(Container(
-            Container(
-                Static("  Ctrl + L", classes="shortcut-key"),
-                Static("Lessons", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + G", classes="shortcut-key"),
-                Static("Playground", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + H", classes="shortcut-key"),
-                Static("Challenges", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + M", classes="shortcut-key"),
-                Static("Missions", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + A", classes="shortcut-key"),
-                Static("Achievements", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + N", classes="shortcut-key"),
-                Static("Notes", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + R", classes="shortcut-key"),
-                Static("Analytics", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + D", classes="shortcut-key"),
-                Static("Dashboard", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            classes="shortcut-grid"
-        ))
-
-        widget_list.append(Static(""))
-
-        # Action Shortcuts
-        widget_list.append(Static("  ACTIONS", classes="settings-label"))
-        widget_list.append(Container(
-            Container(
-                Static("  Ctrl + P", classes="shortcut-key"),
-                Static("Command Palette", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Ctrl + Q", classes="shortcut-key"),
-                Static("Quit Application", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            Container(
-                Static("  Escape", classes="shortcut-key"),
-                Static("Back to Dashboard", classes="shortcut-desc"),
-                classes="shortcut-row"
-            ),
-            classes="shortcut-grid"
-        ))
-
+        shortcuts = [
+            ("Ctrl+L", "Lessons"),
+            ("Ctrl+G", "Playground"),
+            ("Ctrl+H", "Challenges"),
+            ("Ctrl+M", "Missions"),
+            ("Ctrl+A", "Achievements"),
+            ("Ctrl+N", "Notes"),
+            ("Ctrl+R", "Analytics"),
+            ("Ctrl+D", "Dashboard"),
+            ("Ctrl+P", "Command Palette"),
+            ("Ctrl+Q", "Quit"),
+            ("Escape", "Back to Dashboard"),
+        ]
+        rows = []
+        for key, desc in shortcuts:
+            rows.append(Container(
+                Static(f"  [bold cyan]{key}[/]", classes="shortcut-key"),
+                Static(desc, classes="shortcut-desc"),
+                classes="shortcut-row",
+            ))
+        widget_list.append(Container(*rows, classes="shortcut-grid"))
         widget_list.append(Static(""))
         widget_list.append(Rule())
 
-        # Mount all widgets
-        for widget in widget_list:
-            scroll.mount(widget)
-
-        # Set theme select value after mount
-        def set_theme_value():
-            try:
-                theme_select.value = current_theme
-            except Exception:
-                pass
-
-        self.call_after_refresh(set_theme_value)
+        # Mount all widgets in one awaited call to avoid DuplicateId race
+        await scroll.mount(*widget_list)
 
     @on(Button.Pressed, "#save-username")
     def save_username(self) -> None:
         name = self.query_one("#username-input", Input).value.strip()
         if name:
             self.app.db.update_user(username=name)
-            self.app.show_notification(f"Username updated: {name}", severity="information")
+            self.app.show_notification(f"✅ Username saved: {name}", severity="information")
             self._build_settings()
+        else:
+            self.app.show_notification("Username cannot be empty", severity="warning")
+
+    @on(Select.Changed, "#theme-select")
+    def preview_theme_live(self, event: Select.Changed) -> None:
+        """Preview the chosen theme immediately — before the user clicks Apply."""
+        value = event.value
+        if value and value != Select.BLANK:
+            try:
+                self.app.theme = str(value)
+            except Exception:
+                pass
 
     @on(Button.Pressed, "#apply-theme")
     def apply_theme(self) -> None:
-        theme_select = self.query_one("#theme-select", Select)
-        if theme_select.value and theme_select.value != Select.BLANK:
-            self.app.db.set_theme(str(theme_select.value))
+        """Persist and apply the selected theme live."""
+        try:
+            theme_select = self.query_one("#theme-select", Select)
+        except Exception:
+            self.app.show_notification("Theme selector not found", severity="error")
+            return
+
+        value = theme_select.value
+        if not value or value == Select.BLANK:
+            self.app.show_notification("Please choose a theme first", severity="warning")
+            return
+
+        theme_id = str(value)
+        applied = False
+        if hasattr(self.app, "set_and_apply_theme"):
+            applied = self.app.set_and_apply_theme(theme_id)
+        else:
+            # Fallback for older app versions
+            self.app.db.set_theme(theme_id)
+            try:
+                self.app.theme = theme_id
+                applied = True
+            except Exception:
+                pass
+
+        display = theme_id.replace("_", " ").title()
+        if applied:
+            self.app.show_notification(f"✅ Theme applied: {display}", severity="information")
+            # Defer rebuild so remove_children() finishes before re-mount
+            self._build_settings()
+        else:
             self.app.show_notification(
-                f"Theme changed to '{theme_select.value}'. Restart to apply.",
-                severity="information"
+                f"Could not apply theme '{display}' — check that themes.yaml is in place.",
+                severity="error",
             )
 
     @on(Button.Pressed, "#gh-pat")
