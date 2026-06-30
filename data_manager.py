@@ -9,7 +9,7 @@ import json
 import logging
 import sqlite3
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -237,7 +237,7 @@ class DataManager:
             last_date = last_active[:10]
             if last_date == today:
                 return streak  # Already active today
-            yesterday = (date.today() - __import__('datetime').timedelta(days=1)).isoformat()
+            yesterday = (date.today() - timedelta(days=1)).isoformat()
             if last_date == yesterday:
                 streak += 1
             else:
@@ -401,13 +401,15 @@ class DataManager:
         except Exception:
             return False
 
-    def check_and_award_achievements(self, achievements_data: list[dict]) -> list[dict]:
+    def check_and_award_achievements(self, achievements_data: list[dict],
+                                       context: dict | None = None) -> list[dict]:
         """Check all achievement conditions and award newly earned ones."""
         user = self.get_user()
         progress = self.get_progress()
         earned = self.get_earned_achievements()
         newly_earned = []
 
+        now = datetime.now()
         stats = {
             "total_xp":          user.get("xp", 0),
             "streak":            user.get("streak", 0),
@@ -416,6 +418,8 @@ class DataManager:
             "missions_completed":progress.get("missions_completed", 0),
             "challenges_nohint": progress.get("challenges_nohint", 0),
             "notes_created":     self._count_notes(),
+            "tracks_completed":  progress.get("tracks_completed", []),
+            "current_hour":      now.hour,
         }
 
         for ach in achievements_data:
@@ -435,16 +439,50 @@ class DataManager:
         return newly_earned
 
     def _evaluate_trigger(self, trigger: str, stats: dict, earned: set) -> bool:
-        """Evaluate a simple trigger expression."""
-        try:
-            # Direct stat comparisons: "lessons_completed >= 1"
-            for stat, value in stats.items():
-                trigger = trigger.replace(stat, str(value))
-            # Safe eval of simple numeric comparisons
-            if any(op in trigger for op in [">=", "<=", ">", "<", "=="]):
-                return bool(eval(trigger))  # noqa: S307 - controlled expressions only
-        except Exception:
-            pass
+        """Evaluate a simple trigger expression safely without eval()."""
+        import re
+
+        # Handle compound triggers (AND with " and ", OR with " or ")
+        if " and " in trigger:
+            parts = trigger.split(" and ")
+            return all(self._evaluate_trigger(p.strip(), stats, earned) for p in parts)
+        if " or " in trigger:
+            parts = trigger.split(" or ")
+            return any(self._evaluate_trigger(p.strip(), stats, earned) for p in parts)
+
+        # Handle special boolean triggers
+        boolean_triggers = {
+            "track_grep_complete":       lambda s, e: "linux_fundamentals" in s.get("tracks_completed", []),
+            "track_awk_complete":        lambda s, e: "text_processing" in s.get("tracks_completed", []),
+            "track_regex_complete":      lambda s, e: "regex_academy" in s.get("tracks_completed", []),
+            "track_vlsi_complete":       lambda s, e: "vlsi_track" in s.get("tracks_completed", []),
+            "quiz_perfect_nohint":       lambda s, e: s.get("quiz_correct", 0) > 0 and s.get("challenges_nohint", 0) > 0,
+            "challenge_fast":            lambda s, e: True,  # Awarded inline by ProgressEngine
+            "pipeline_5_commands":       lambda s, e: True,  # Awarded inline
+            "all_missions_complete":     lambda s, e: s.get("missions_completed", 0) >= 6,
+            "portfolio_generated":       lambda s, e: True,  # Awarded inline
+            "lesson_before_8am":         lambda s, e: 0 <= s.get("current_hour", 12) < 8,
+            "lesson_after_midnight":     lambda s, e: 0 <= s.get("current_hour", 12) < 5,
+        }
+        if trigger in boolean_triggers:
+            return boolean_triggers[trigger](stats, earned)
+
+        # Direct stat comparisons: "lessons_completed >= 1"
+        match = re.match(r'^(\w+)\s*(>=|<=|>|<|==)\s*(\d+)$', trigger.strip())
+        if match:
+            stat_name, op, threshold = match.group(1), match.group(2), int(match.group(3))
+            value = stats.get(stat_name, 0)
+            if op == ">=":
+                return value >= threshold
+            elif op == "<=":
+                return value <= threshold
+            elif op == ">":
+                return value > threshold
+            elif op == "<":
+                return value < threshold
+            elif op == "==":
+                return value == threshold
+
         return False
 
     def _count_notes(self) -> int:

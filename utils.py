@@ -543,20 +543,42 @@ def validate_challenge_output(user_output: str, expected_pattern: str,
     if not output:
         return False, "No output produced. Make sure your command runs successfully."
 
+    lines = output.splitlines()
+    non_empty = [l for l in lines if l.strip()]
+
     if validation_type == "line_count":
-        actual = len(output.splitlines())
+        actual = len(non_empty)
         if actual == expected_lines:
-            return True, f"✓ Correct! Got exactly {expected_lines} lines."
+            return True, f"Correct! Got exactly {expected_lines} lines."
+        elif abs(actual - expected_lines) <= 2:
+            return False, f"Almost! Expected {expected_lines} lines, got {actual}. Check for extra blank lines or missing entries."
         else:
             return False, f"Expected {expected_lines} lines, got {actual}."
 
     if validation_type == "pattern_match":
-        lines = output.splitlines()
-        if len(lines) > 0 and all(line.strip() for line in lines):
-            return True, "✓ Output looks correct!"
+        if len(non_empty) == 0:
+            return False, "Output is empty or contains only blank lines."
+        if expected_pattern:
+            pattern_lower = expected_pattern.lower()
+            output_lower = output.lower()
+            if "count" in pattern_lower or "number" in pattern_lower:
+                import re
+                if not re.search(r'\d+', output):
+                    return False, "Expected a numerical count in the output."
+            if "ip" in pattern_lower:
+                import re
+                if not re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', output):
+                    return False, "Expected IP addresses in the output."
+            if "list" in pattern_lower or "lines" in pattern_lower:
+                if len(non_empty) < 2:
+                    return False, "Expected multiple lines of output."
+        if len(non_empty) >= 1:
+            return True, "Output looks correct!"
         return False, "Output doesn't match expected format."
 
     if validation_type == "format_check":
-        return True, "✓ Output accepted!"
+        if len(non_empty) > 0:
+            return True, "Output accepted!"
+        return False, "Output is empty."
 
-    return True, "✓ Output accepted!"
+    return True, "Output accepted!"
