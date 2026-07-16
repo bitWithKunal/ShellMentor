@@ -143,7 +143,6 @@ class ChallengeEngine:
             return {"solved": False, "message": "No active challenge"}
 
         ch = self._active.challenge
-        self._active.attempts += 1
 
         passed, message = validate_challenge_output(
             user_output,
@@ -152,18 +151,24 @@ class ChallengeEngine:
             ch.get("expected_lines", 0)
         )
 
+        # Calculate XP before incrementing attempts (so first-attempt bonus works)
+        if passed:
+            xp_reward = self._calc_challenge_xp(ch, self._active)
+        else:
+            xp_reward = 0
+
+        self._active.attempts += 1
+
         result = {
             "solved":    passed,
             "message":   message,
             "attempts":  self._active.attempts,
             "elapsed":   self._active.elapsed,
             "hints_used":self._active.hints_revealed,
-            "xp_earned": 0,
+            "xp_earned": xp_reward,
         }
 
         if passed:
-            xp_reward = self._calc_challenge_xp(ch, self._active)
-            result["xp_earned"] = xp_reward
             result["solution"]  = ch.get("solution", "")
             for cb in self._on_complete_callbacks:
                 try:

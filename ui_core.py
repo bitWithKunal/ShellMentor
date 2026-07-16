@@ -39,15 +39,10 @@ from textual.widgets import (
 )
 
 from data_manager import DataManager
-from learning import LearningEngine
-from challenge import ChallengeEngine
-from playground import PlaygroundEngine
-from progress import ProgressEngine, LevelUpEvent, XPEvent
-from github_sync import GitHubSync
+from progress import LevelUpEvent
 from utils import (
-    detect_system, SystemInfo, get_install_command,
-    load_yaml, THEMES_DIR, difficulty_icon, difficulty_color,
-    rarity_color, format_xp, format_duration, truncate, APP_VERSION, APP_NAME
+    difficulty_icon, difficulty_color,
+    rarity_color, format_xp, truncate, APP_VERSION, APP_NAME
 )
 
 logger = logging.getLogger("shellmentor")
@@ -129,6 +124,7 @@ class NavigationSidebar(Vertical):
             ("notes",       "NOTES"),
             ("analytics",   "ANALYTICS"),
             ("settings",    "SETTINGS"),
+            ("github_space","GIT SPACE"),
         ]
 
         for screen_id, label in nav_items:
@@ -220,6 +216,10 @@ class BaseScreen(Screen):
     def nav_settings(self) -> None:
         self.app.action_go_settings()
 
+    @on(Button.Pressed, "#nav-github_space")
+    def nav_github_space(self) -> None:
+        self.app.action_go_github_space()
+
 
 # ──────────────────────── Shared Widgets ────────────────────────
 
@@ -234,7 +234,7 @@ class XPBar(Static):
         self.pct = pct
 
     def render(self) -> Text:
-        filled = int(self.pct / 5)
+        filled = min(20, int(self.pct / 5))
         bar = "█" * filled + "░" * (20 - filled)
         return Text.from_markup(
             f"[gold1]{format_xp(self.current_xp)}[/] "

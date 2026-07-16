@@ -36,6 +36,7 @@ from ui_screens import (
     AnalyticsScreen,
     SettingsScreen,
     EnvScanScreen,
+    GitHubSpaceScreen,
 )
 
 from ui_activities import (
@@ -65,6 +66,7 @@ __all__ = [
     "AnalyticsScreen",
     "SettingsScreen",
     "EnvScanScreen",
+    "GitHubSpaceScreen",
     "ChallengesScreen",
     "ChallengeScreen",
     "MissionsScreen",

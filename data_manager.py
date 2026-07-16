@@ -63,8 +63,6 @@ class DataManager:
                 streak        INTEGER DEFAULT 0,
                 last_active   TEXT,
                 created_at    TEXT DEFAULT (datetime('now')),
-                github_token  TEXT DEFAULT '',
-                github_user   TEXT DEFAULT '',
                 theme         TEXT DEFAULT 'professional_dark',
                 settings      TEXT DEFAULT '{}'
             );
@@ -532,10 +530,13 @@ class DataManager:
 
     def record_command(self, command: str, output: str, exit_code: int,
                        context: str = "playground", duration_ms: float = 0) -> None:
+        stored_output = output[:2000]
+        if len(output) > 2000:
+            stored_output += "\n[... output truncated ...]"
         self.conn.execute("""
             INSERT INTO command_history (user_id, command, output, exit_code, context, duration_ms)
             VALUES (1,?,?,?,?,?)
-        """, (command, output[:2000], exit_code, context, duration_ms))
+        """, (command, stored_output, exit_code, context, duration_ms))
         self.conn.commit()
         self.increment_progress(commands_executed=1)
 
@@ -656,3 +657,23 @@ class DataManager:
         self.increment_progress(quizzes_taken=1)
         if correct:
             self.increment_progress(quiz_correct=1)
+
+    def reset_all_progress(self) -> None:
+        """Reset all user progress, achievements, and history. Preserves theme and settings."""
+        user = self.get_user()
+        theme = user.get("theme", "professional_dark")
+        settings = user.get("settings", "{}")
+        self.conn.executescript("""
+            DELETE FROM lesson_history;
+            DELETE FROM challenge_history;
+            DELETE FROM mission_history;
+            DELETE FROM achievements;
+            DELETE FROM command_history;
+            DELETE FROM sessions;
+            UPDATE user SET xp=0, level=1, rank_title='Terminal Novice', streak=0;
+            UPDATE progress SET lessons_completed=0, challenges_solved=0,
+                missions_completed=0, quizzes_taken=0, quiz_correct=0,
+                commands_executed=0, time_spent_mins=0, tracks_completed='[]';
+        """)
+        self.update_user(theme=theme, settings=settings)
+        self.conn.commit()

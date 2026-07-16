@@ -45,7 +45,6 @@ from learning import LearningEngine
 from challenge import ChallengeEngine
 from playground import PlaygroundEngine
 from progress import ProgressEngine, LevelUpEvent, XPEvent
-from github_sync import GitHubSync
 from utils import (
     detect_system, SystemInfo, get_install_command,
     load_yaml, THEMES_DIR, difficulty_icon, difficulty_color,
@@ -281,7 +280,6 @@ class ChallengeScreen(Screen):
 
         if self._active:
             self._active.command_history.append(command)
-            self._active.attempts += 1
 
         result = self.app.playground_engine.execute(command, context="challenge")
         output = self.query_one("#cs-output", RichLog)

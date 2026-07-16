@@ -1,0 +1,92 @@
+ShellMentor v2.0.0 — Project Summary
+======================================
+Professional Linux Command-Line Learning Platform
+Author: Kunal Saraswat | License: MIT | July 2026
+
+WHAT IT IS
+----------
+Terminal-based (TUI) learning platform for Linux command-line skills.
+Built with Python 3.10+ and Textual framework. All data stored locally
+in SQLite. No external services required.
+
+CODEBASE
+--------
+12 Python files | ~5,500 lines | 4 JSON data files | 12 YAML themes
+
+main.py          697 lines  App entry, themes, keybindings, lifecycle
+ui.py             73 lines  Re-export shim
+ui_core.py       451 lines  BaseScreen, NavButton, modals
+ui_screens.py  1,555 lines  Dashboard, Lessons, Quiz, Playground, Notes,
+                            Analytics, Settings, EnvScan (8 screens)
+ui_activities.py  765 lines  Challenges, Missions, Achievements
+learning.py      401 lines  Lesson/quiz engine, command translator
+challenge.py     296 lines  Challenge/mission validation, XP scoring
+playground.py    479 lines  Command execution, autocomplete, sessions
+progress.py      311 lines  XP, levels, achievements, portfolio
+data_manager.py  638 lines  SQLite persistence (9 tables)
+utils.py         584 lines  Sandbox engine, system detection, utilities
+sandbox.py       463 lines  Extended sandbox (unused)
+test_core.py      70 lines  6 basic tests
+
+FEATURES
+--------
+1. Structured Lessons    — 3 tracks, 25+ lessons with sections/exercises/quizzes
+2. Command Playground    — Sandboxed execution, 50+ autocomplete templates
+3. Challenges            — 20+ scored exercises with hints and validation
+4. Missions              — Multi-stage narrative learning objectives
+5. Gamification          — 12-level ranking (Novice -> Grandmaster), 25+ achievements
+6. Notes                 — Search, edit, save, export
+7. Analytics             — Progress stats, command usage, challenge breakdown
+8. Theming               — YAML-based themes with live switching
+9. Safety                — 50+ blocked commands, 15 blocked patterns
+
+ARCHITECTURE
+------------
+  UI Layer → Engine Layer → Data Layer
+  (ui_core,      (learning,    (data_manager
+   ui_screens,    challenge,    — SQLite)
+   ui_activities) playground,
+                   progress)
+
+Engines communicate via callbacks. UI screens access engines via
+self.app.<engine>. All persistence through DataManager.
+
+GAMIFICATION RANKS
+------------------
+Level 1:  Terminal Novice       (0 XP)
+Level 2:  Shell Apprentice      (500 XP)
+Level 3:  Pattern Hunter        (1,200 XP)
+Level 4:  Regex Apprentice      (2,500 XP)
+Level 5:  Text Wrangler         (4,500 XP)
+Level 6:  Pipeline Builder      (7,000 XP)
+Level 7:  Pipeline Master       (10,000 XP)
+Level 8:  Log Investigator      (14,000 XP)
+Level 9:  Automation Expert     (19,000 XP)
+Level 10: Linux Architect       (25,000 XP)
+Level 11: VLSI Investigator     (32,000 XP)
+Level 12: ShellMentor Grandmaster (50,000 XP)
+
+WHAT WORKS WELL
+---------------
+- BaseScreen pattern eliminates UI duplication
+- Sandbox is genuinely secure
+- Achievement triggers handle AND/OR without eval()
+- Command translator and regex visualizer add real pedagogical value
+- Theme system with live preview is polished
+- Data layer has proper schema, WAL, foreign keys
+
+TOP ISSUES
+----------
+1. Double XP bug (lessons + challenges record twice)
+2. Sandbox bypass via && and ; command chaining
+3. Missing shell blocking (zsh, fish, csh)
+4. Challenge validation too permissive
+5. Dashboard queries DB every second
+6. Only 6 tests for 5,500 lines
+
+VERDICT
+-------
+Well-structured project with solid architecture. The sandbox safety
+system and gamification engine are above average for a learning tool.
+Main concerns: double-XP bugs, sandbox gaps, and low test coverage.
+Fix the critical bugs and add tests for production readiness.

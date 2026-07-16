@@ -14,6 +14,5 @@ __pycache__/
 .idea/
 *.swp
 *.swo
-workspace/user_*
-workspace/temp_*
 *.session
+uv.lock

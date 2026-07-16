@@ -26,7 +26,6 @@ from learning import LearningEngine
 from challenge import ChallengeEngine
 from playground import PlaygroundEngine
 from progress import ProgressEngine, LevelUpEvent, XPEvent
-from github_sync import GitHubSync
 from utils import (
     detect_system, APP_NAME, APP_VERSION,
     load_yaml, THEMES_DIR, DATA_DIR, format_xp
@@ -39,6 +38,7 @@ from ui import (
     NotesScreen, AnalyticsScreen, SettingsScreen,
     EnvScanScreen, LevelUpModal, AchievementModal,
     QuizScreen, ChallengeScreen, MissionScreen,
+    GitHubSpaceScreen,
 )
 
 # ── Logging ──
@@ -367,8 +367,8 @@ class CommandPaletteScreen(Screen):
         ("NOTES",              "notes"),
         ("ANALYTICS",          "analytics"),
         ("SETTINGS",           "settings"),
+        ("GIT SPACE",          "github_space"),
         ("EXPORT PORTFOLIO",   "export_portfolio"),
-        ("REFRESH DASHBOARD",  "refresh"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -444,6 +444,7 @@ class ShellMentorApp(App):
         Binding("ctrl+n", "go_notes",          "Notes"),
         Binding("ctrl+r", "go_analytics",      "Analytics"),
         Binding("ctrl+s", "go_settings",       "Settings"),
+        Binding("ctrl+u", "go_github_space",   "Git Space"),
         Binding("ctrl+d", "go_dashboard",      "Dashboard"),
         Binding("ctrl+q", "quit",              "Quit"),
         Binding("f1",     "go_dashboard",      "Dashboard", show=False),
@@ -457,7 +458,6 @@ class ShellMentorApp(App):
         self.challenge_engine = ChallengeEngine(self.db)
         self.playground_engine= PlaygroundEngine(self.db)
         self.progress_engine  = ProgressEngine(self.db)
-        self.github_sync      = GitHubSync(self.db)
 
         # Temp state
         self._selected_challenge: str | None = None
@@ -597,6 +597,9 @@ class ShellMentorApp(App):
     def action_go_settings(self) -> None:
         self._navigate_to(SettingsScreen)
 
+    def action_go_github_space(self) -> None:
+        self._navigate_to(GitHubSpaceScreen)
+
     def action_command_palette(self) -> None:
         def handle_result(action: str | None) -> None:
             if not action:
@@ -611,8 +614,8 @@ class ShellMentorApp(App):
                 "notes":            self.action_go_notes,
                 "analytics":        self.action_go_analytics,
                 "settings":         self.action_go_settings,
+                "github_space":     self.action_go_github_space,
                 "export_portfolio": self._export_portfolio,
-                "refresh":          lambda: None,
             }
             fn = action_map.get(action)
             if fn:

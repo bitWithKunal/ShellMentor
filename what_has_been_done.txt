@@ -1,0 +1,102 @@
+ShellMentor v2.0.0 — What Has Been Done
+=========================================
+Professional Linux Command-Line Learning Platform
+Reviewed: July 2026 | 12 Python files | ~5,500 lines
+
+MODULE BREAKDOWN
+----------------
+
+main.py (697 lines)
+  App entry point. Theme registry from YAML, OS username detection,
+  session time tracking (30s flush), keyboard bindings (Ctrl+L/G/H/M/A/N/R/S/D/P/Q),
+  command palette with search. Clean lifecycle: DB close + time flush on quit.
+
+ui_core.py (451 lines)
+  Shared foundation. BaseScreen template (sidebar + header + footer + render_content()).
+  NavButton, XPBar, StatCard, SectionHeader widgets. Four modals: LevelUp, Achievement,
+  Hint, Confirm.
+
+ui_screens.py (1,555 lines)
+  8 screens. DashboardScreen: ASCII logo, animated progress bar, streak indicators.
+  LessonsScreen: track/lesson browser, section viewer, exercises, quizzes.
+  PlaygroundScreen: terminal, file browser, pipeline templates. NotesScreen: search/edit/save.
+  AnalyticsScreen: bar charts. SettingsScreen: theme selector (live preview), portfolio export.
+  EnvScanScreen: first-run system detection.
+
+ui_activities.py (765 lines)
+  ChallengesScreen: difficulty filter, ChallengeScreen solver (Run/Submit/Hint).
+  MissionsScreen: stage progress, MissionScreen runner. AchievementsScreen: rarity grouped.
+
+learning.py (401 lines)
+  Track/lesson engine. QuizSession with scoring. Exercise validation via shlex token overlap.
+  Command translator: 7 task categories across grep/sed/awk. Regex visualizer. Full-text search.
+
+challenge.py (296 lines)
+  Challenge validation. XP formula: base * hint_factor * speed_factor * attempt_factor.
+  Mission mode with stage progression. Callback system for completion.
+
+playground.py (479 lines)
+  Command execution wrapper. Autocomplete: 50+ templates. 8 pipeline templates.
+  Session recording/export. Diff viewer. Command help.
+
+progress.py (311 lines)
+  Gamification coordinator. XP events with callbacks. Achievement evaluation:
+  compound AND/OR triggers without eval(). 12-level ranking. Portfolio generation.
+
+data_manager.py (638 lines)
+  SQLite with WAL journaling. 9 tables. Level computation (12 thresholds).
+  Streak tracking. Achievement trigger evaluator. Note search. Analytics summary.
+
+utils.py (584 lines)
+  SystemInfo detection. SandboxEngine: 50+ blocked commands, 15 blocked patterns,
+  process group killing on timeout. Package manager detection. Text utilities.
+
+sandbox.py (463 lines)
+  EnhancedSandbox, SessionRecording, VirtualFilesystem, OutputDiffer. (Unused)
+
+test_core.py (70 lines)
+  6 basic tests: sandbox blocking, safe commands, line count, empty output,
+  level computation, XP formatting.
+
+WHAT WORKS WELL
+---------------
+1. BaseScreen pattern eliminates sidebar/header/footer duplication
+2. Sandbox is genuinely secure (blocked commands + patterns + path checks)
+3. Achievement triggers handle AND/OR without eval()
+4. Command translator and regex visualizer add real pedagogical value
+5. Theme system with live preview is polished
+6. Data layer has proper schema, WAL, foreign keys, parameterized queries
+
+ISSUES FOUND
+------------
+
+CRITICAL (Bug):
+1. Double XP on lesson completion — ui_screens.py:510 calls award_xp() directly
+   but learning_engine.complete_lesson() already records to DB. XP counted twice.
+2. Double XP on challenge completion — ui_activities.py:310 calls
+   complete_challenge() directly but ChallengeEngine callback already handles it.
+3. Sandbox bypass via command chaining — utils.py:248 validate() only checks first
+   token. `echo x && rm -rf /` passes because first token is "echo".
+4. Missing shell blocking — utils.py:37 BLOCKED_COMMANDS has bash/sh but misses
+   zsh, fish, csh, tcsh, dash, ksh. User can run `zsh -c "malicious"`.
+
+HIGH:
+5. Challenge validation too loose — utils.py:558 pattern_match returns True for
+   any non-empty output. `echo 42` passes a challenge about error frequency.
+6. Dashboard DB queries every second — ui_screens.py:104 triggers 3 queries/sec.
+7. /dev/null redirect blocked — utils.py:58 blocks `echo > /dev/null` (safe).
+8. Notes delete without confirmation — ui_screens.py:968 removes immediately.
+
+MEDIUM:
+9. Dead code: sandbox.py (463 lines) never instantiated anywhere.
+10. Challenge attempts double-counted — ui_activities.py:284 + challenge.py:146.
+11. First-attempt bonus never triggers — challenge.py:146 increments before check.
+12. Quiz answer case-sensitive — learning.py:54 exact string match.
+13. Unused imports across UI modules (detect_system, SystemInfo, etc.).
+
+LOW:
+14. XPBar overflow when pct > 100 — ui_core.py:237.
+15. get_lesson() return type lie — learning.py:114 annotated as dict|None.
+16. Settings reset bypasses DataManager — ui_screens.py:1448 raw SQL.
+17. Command output truncation silent — data_manager.py:538 output[:2000].
+18. Lesson score always 100 — ui_screens.py:510 hardcoded.

@@ -51,7 +51,7 @@ ShellMentor eliminates the fragmentation of Linux learning by providing an integ
 
 ## Screenshots
 
-> All screenshots are taken from ShellMentor v2.0.0 running on Linux.
+> All screenshots are taken from ShellMentor v4.1.0 running on Linux.
 
 ### Lessons — Structured Curriculum Delivery
 
@@ -111,7 +111,7 @@ Progress breakdowns by challenge difficulty, most-used commands, and lessons per
 
 ### Settings — Profile & Theme Configuration
 
-Username management, theme selection (Dracula, and more), and GitHub integration configuration.
+Username management, theme selection (Dracula, and more), and application settings.
 
 ![Settings - Configure ShellMentor](screenshots/12.png)
 
@@ -228,7 +228,6 @@ Python 3.10+
 textual>=0.30.0          # Rich terminal UI framework
 rich>=13.0.0             # Terminal formatting and rendering
 pyyaml>=6.0              # Configuration file parsing
-requests>=2.28.0         # HTTP client for GitHub integration
 click>=8.1.0             # Command-line interface library
 ```
 
@@ -408,7 +407,7 @@ ShellMentor Application Architecture
 ├─────────────────────────────────────────────────────┤
 │            Integration Layer                        │
 ├─────────────────────────────────────────────────────┤
-│  GitHub Sync | System Command Execution | Sandbox  │
+│  System Command Execution | Sandbox  │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -471,13 +470,7 @@ ShellMentor implements a modular architecture with well-defined separation of co
 - Environment variable handling
 - Logging and debugging utilities
 
-#### github_sync.py - Community Integration
-- GitHub profile synchronization
-- Portfolio generation and export
-- Community feature integration
-- Authentication handling
-
-### Data Model
+#### utils.py - Shared Utilities
 
 #### User Progress Entity
 
@@ -941,11 +934,9 @@ export SHELLMENTOR_LOG_FILE=~/.shellmentor.log
 
 # Feature flags
 export SHELLMENTOR_DEBUG=false
-export SHELLMENTOR_GITHUB_SYNC=true
 
 # Data paths
 export SHELLMENTOR_DATA_DIR=~/.shellmentor/data
-export SHELLMENTOR_WORKSPACE_DIR=~/.shellmentor/workspace
 
 # Theme configuration
 export SHELLMENTOR_THEME=catppuccin
@@ -1043,27 +1034,6 @@ print(stats)
 
 # Backup user data
 dm.export_progress("backup.json")
-```
-
-### GitHub Integration
-
-ShellMentor supports GitHub profile integration for portfolio sharing:
-
-```bash
-# Enable GitHub integration in settings
-# Navigate to: Settings > GitHub Integration
-
-# Authenticate with GitHub
-# Follow OAuth flow when prompted
-
-# Share progress to GitHub
-# Command Palette: "EXPORT PORTFOLIO"
-
-# Shared data includes:
-# - Learning statistics
-# - Challenge completion records
-# - Achievement repository
-# - Public profile
 ```
 
 ### Analytics and Reporting

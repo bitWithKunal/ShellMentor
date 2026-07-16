@@ -51,7 +51,14 @@ class QuizSession:
             return {"correct": False, "message": "No question active"}
 
         correct_answer = q.get("answer", "")
-        is_correct = user_answer.strip() == correct_answer.strip()
+        q_type = q.get("type", "multiple_choice")
+
+        # Case-insensitive for fill-in-blank, exact for multiple choice
+        if q_type == "fill_in_blank":
+            is_correct = user_answer.strip().lower() == correct_answer.strip().lower()
+        else:
+            is_correct = user_answer.strip() == correct_answer.strip()
+
         self.total += 1
         if is_correct:
             self.correct += 1
@@ -111,7 +118,7 @@ class LearningEngine:
     def get_track(self, track_id: str) -> dict | None:
         return next((t for t in self.get_tracks() if t["id"] == track_id), None)
 
-    def get_lesson(self, lesson_id: str) -> dict | None:
+    def get_lesson(self, lesson_id: str) -> tuple[dict | None, str | None]:
         for track in self.get_tracks():
             for lesson in track.get("lessons", []):
                 if lesson["id"] == lesson_id:
@@ -187,17 +194,20 @@ class LearningEngine:
         return session
 
     def complete_lesson(self, score: int) -> dict:
-        """Mark active lesson as complete and return XP info."""
+        """Return lesson completion info. Caller must use ProgressEngine to record + award XP."""
         if not self._active_lesson:
             return {}
         lesson = self._active_lesson.lesson
         xp = lesson.get("xp_reward", 100)
         time_spent = int(self._active_lesson.elapsed_seconds)
-        self.db.record_lesson_completion(
-            lesson["id"], self._active_lesson.track_id,
-            score, xp, time_spent
-        )
-        result = {"xp": xp, "lesson": lesson["title"], "time": time_spent}
+        result = {
+            "xp": xp,
+            "lesson": lesson["title"],
+            "time": time_spent,
+            "lesson_id": lesson["id"],
+            "track_id": self._active_lesson.track_id,
+            "score": score,
+        }
         self._active_lesson = None
         return result
 

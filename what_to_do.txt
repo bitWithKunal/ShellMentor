@@ -1,0 +1,136 @@
+ShellMentor v2.0.0 — What To Do
+=================================
+Reviewed: July 2026
+
+BUGS TO FIX
+-----------
+
+1. Double XP on lesson completion
+   ui_screens.py:510 — Remove direct award_xp() call, let ProgressEngine handle it.
+
+2. Double XP on challenge completion
+   ui_activities.py:310 — Remove direct complete_challenge() call from ChallengeScreen.
+
+3. Sandbox bypass via command chaining
+   utils.py:248 — Add r"&&" and r";" to BLOCKED_PATTERNS.
+
+4. Missing shell blocking
+   utils.py:37 — Add zsh, fish, csh, tcsh, dash, ksh to BLOCKED_COMMANDS.
+
+5. Challenge validation too loose
+   utils.py:558 — Implement actual regex matching, not just non-empty check.
+
+6. Dashboard DB queries every second
+   ui_screens.py:104 — Increase interval to 5-10s or cache data.
+
+7. /dev/null redirect blocked
+   utils.py:58 — Change to r">\s*/dev/(?!null)".
+
+8. Notes delete without confirmation
+   ui_screens.py:968 — Show ConfirmModal before deleting.
+
+9. Challenge attempts double-counted
+   ui_activities.py:284 — Remove attempts increment from run_command().
+
+10. First-attempt bonus never triggers
+    challenge.py:146 — Increment attempts AFTER XP calculation.
+
+11. Quiz answer case-sensitive
+    learning.py:54 — Use case-insensitive comparison for fill-in-blank.
+
+12. get_lesson() return type lie
+    learning.py:114 — Fix annotation to tuple[dict|None, str|None].
+
+13. XPBar overflow
+    ui_core.py:237 — Use min(20, int(pct/5)).
+
+14. Lesson score always 100
+    ui_screens.py:510 — Calculate from exercise + quiz performance.
+
+MISSING FEATURES
+----------------
+
+LEARNING:
+- Interactive exercises with real-time output validation in sandbox
+- Lesson bookmarking/resume from last position
+- Lesson difficulty indicators in sidebar
+- Bookmark/save favorite lessons for quick access
+- Estimated time remaining during lesson
+- Lesson completion certificates
+
+CHALLENGES:
+- Timed challenge mode with countdown
+- Challenge streak bonus (consecutive solves)
+- Challenge difficulty auto-adjustment based on performance
+- Retry failed challenges without going back to list
+- Challenge solution explanations after timeout/abandon
+- More challenges per level (target: 50+ total)
+
+PLAYGROUND:
+- Command alias support (user-defined shortcuts)
+- Script builder mode (chain commands visually)
+- Output export to clipboard/file
+- Workspace file upload support
+- Command syntax highlighting in input
+- Command documentation tooltip on hover
+- Undo/redo for command execution
+
+GAMIFICATION:
+- Daily challenge mode (one new challenge per day)
+- Weekly streak rewards (bonus XP for 7-day streaks)
+- Skill trees (visual progression map)
+- Badge display on dashboard
+- XP multiplier events (double XP weekends)
+- Achievement showcase/profile view
+- Leaderboard (local, compare with friends)
+
+NOTES:
+- Markdown preview mode for notes
+- Auto-tag notes from content analysis
+- Note templates (command cheatsheet, lesson summary)
+- Note export (PDF, HTML)
+- Note version history (undo changes)
+- Note sharing via file import/export
+
+ANALYTICS:
+- Time-series charts (XP over time)
+- Command usage heatmap (visual frequency)
+- Learning velocity tracking (XP per session)
+- Skill gap analysis (weak areas highlighted)
+- Export analytics report (PDF/CSV)
+- Comparison with average user stats
+
+SETTINGS:
+- Custom keyboard shortcut configuration
+- Notification preferences (level up, achievement, streak)
+- Data backup/restore (import/export SQLite)
+- Auto-save interval configuration
+- Sandbox timeout configuration
+- Font size / terminal width preferences
+
+CONTENT:
+- More Foundation Track lessons (target: 15+)
+- More Intermediate Track lessons (target: 15+)
+- More Advanced Track lessons (target: 10+)
+- More missions (target: 10+)
+- More achievements (target: 40+)
+- Video tutorials for complex concepts
+- Command cheatsheet reference
+- Interactive regex playground
+
+TESTING:
+- Unit tests for LearningEngine (track loading, quiz, validation)
+- Unit tests for ChallengeEngine (XP calc, mission progression)
+- Unit tests for PlaygroundEngine (autocomplete, sessions)
+- Unit tests for ProgressEngine (achievements, portfolio)
+- Unit tests for DataManager (all CRUD, streak, levels)
+- Integration tests (full user flow)
+- CI/CD pipeline with pytest
+
+DISTRIBUTION:
+- pip install support (pyproject.toml already configured)
+- Dockerfile for containerized deployment
+- Snap/flatpak packaging
+- Auto-update mechanism
+- Crash reporting
+- Anonymous usage telemetry (opt-in)

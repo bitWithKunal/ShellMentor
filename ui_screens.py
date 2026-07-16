@@ -42,7 +42,6 @@ from learning import LearningEngine
 from challenge import ChallengeEngine
 from playground import PlaygroundEngine
 from progress import ProgressEngine, LevelUpEvent, XPEvent
-from github_sync import GitHubSync
 from utils import (
     detect_system, SystemInfo, get_install_command,
     load_yaml, THEMES_DIR, difficulty_icon, difficulty_color,
@@ -86,6 +85,10 @@ class DashboardScreen(BaseScreen):
         super().__init__(screen_name="dashboard")
         self._frame = 0
         self._animation_timer = None
+        self._data_timer = None
+        self._cached_stats = None
+        self._cached_next_rank = None
+        self._cached_recommended = None
 
     def render_content(self) -> ComposeResult:
         yield ScrollableContainer(
@@ -94,29 +97,39 @@ class DashboardScreen(BaseScreen):
         )
 
     def on_mount(self) -> None:
-        self._refresh_dashboard()
+        self._refresh_dashboard_data()
         self._start_animation()
 
     def _start_animation(self) -> None:
         """Start animated counter for dashboard."""
         self._animation_timer = self.set_interval(1.0, self._update_animated_effects)
+        self._data_timer = self.set_interval(5.0, self._refresh_dashboard_data)
 
     def _update_animated_effects(self) -> None:
-        """Update animated elements on dashboard."""
+        """Update animated elements on dashboard using cached data."""
         self._frame += 1
-        self._refresh_dashboard()
+        if self._cached_stats:
+            self._render_dashboard()
 
-    def _refresh_dashboard(self) -> None:
-        self._load_dashboard_async()
+    def _refresh_dashboard_data(self) -> None:
+        self._load_dashboard_data_async()
 
     @work(exclusive=True)
-    async def _load_dashboard_async(self) -> None:
+    async def _load_dashboard_data_async(self) -> None:
         app = self.app
-        stats = app.progress_engine.get_dashboard_stats()
-        next_rank = app.progress_engine.get_next_rank_info()
-        recommended = app.learning_engine.get_recommended_next()
+        self._cached_stats = app.progress_engine.get_dashboard_stats()
+        self._cached_next_rank = app.progress_engine.get_next_rank_info()
+        self._cached_recommended = app.learning_engine.get_recommended_next()
+        self._render_dashboard()
 
-        # Resolve username — synced from the real OS account on first launch
+    def _render_dashboard(self) -> None:
+        stats = self._cached_stats
+        next_rank = self._cached_next_rank
+        recommended = self._cached_recommended
+        if not stats:
+            return
+
+        app = self.app
         try:
             username = (app.db.get_user().get("username") or "").strip() or "Learner"
         except Exception:
@@ -507,11 +520,21 @@ class LessonsScreen(BaseScreen):
     def complete_lesson(self) -> None:
         if not self.current_lesson_id:
             return
-        result = self.app.learning_engine.complete_lesson(score=100)
-        xp = result.get("xp", 0)
-        self.app.progress_engine.award_xp(xp, "lesson", "Lesson complete")
+        # Calculate score from exercise results
+        total = len(self._exercise_results)
+        correct = sum(1 for r in self._exercise_results if "CORRECT" in (r.render() or ""))
+        score = int((correct / total * 100)) if total > 0 else 100
+        # Get completion info from learning engine (no DB write yet)
+        info = self.app.learning_engine.complete_lesson(score=score)
+        if not info:
+            return
+        # Single call to progress engine: records + awards XP + streak + achievements
+        self.app.progress_engine.complete_lesson(
+            info["lesson_id"], info["track_id"],
+            info["score"], info["xp"], info["time"]
+        )
         self._populate_lessons(self.current_track)
-        self.app.show_notification(f"Lesson complete! +{xp} XP", severity="information")
+        self.app.show_notification(f"Lesson complete! +{info['xp']} XP", severity="information")
 
 
 
@@ -967,12 +990,17 @@ class NotesScreen(BaseScreen):
 
     @on(Button.Pressed, "#del-note-btn")
     def delete_note(self) -> None:
-        if self._current_note_id:
-            self.app.db.delete_note(self._current_note_id)
-            self._current_note_id = None
-            self.query_one("#note-title", Input).value = ""
-            self.query_one("#note-content", TextArea).load_text("")
-            self._refresh_notes()
+        if not self._current_note_id:
+            return
+        def handle_confirm(confirmed: bool | None) -> None:
+            if confirmed:
+                self.app.db.delete_note(self._current_note_id)
+                self._current_note_id = None
+                self.query_one("#note-title", Input).value = ""
+                self.query_one("#note-content", TextArea).load_text("")
+                self._refresh_notes()
+                self.app.show_notification("Note deleted", severity="information")
+        self.app.push_screen(ConfirmModal("Delete this note?"), handle_confirm)
 
     @on(Button.Pressed, "#export-note-btn")
     def export_note(self) -> None:
@@ -1301,32 +1329,6 @@ class SettingsScreen(BaseScreen):
         ))
         widget_list.append(Static(""))
 
-        # ── GITHUB ──
-        widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold cyan]🐙  GITHUB INTEGRATION[/]", classes="settings-section-header"))
-        widget_list.append(Static(""))
-
-        if self.app.github_sync.is_authenticated:
-            gh_user = self.app.github_sync.github_username
-            widget_list.append(Static(f"  ✔  Connected as [bold cyan]@{gh_user}[/]", classes="settings-label"))
-            widget_list.append(Static("  Publish your learning portfolio to GitHub Pages.", classes="settings-hint"))
-            widget_list.append(Button("🚀  Publish Portfolio", id="publish-portfolio", variant="success"))
-            widget_list.append(Button("🔌  Disconnect GitHub", id="gh-disconnect", variant="error"))
-        else:
-            widget_list.append(Static("  Not connected", classes="settings-label"))
-            widget_list.append(Static(
-                "  Enter a GitHub Personal Access Token (repo scope) to publish your portfolio.",
-                classes="settings-hint"
-            ))
-            widget_list.append(Input(
-                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx",
-                id="pat-input",
-                password=True,
-            ))
-            widget_list.append(Button("🔑  Connect with Token", id="gh-pat", variant="primary"))
-
-        widget_list.append(Static(""))
-
         # ── DATA MANAGEMENT ──
         widget_list.append(Rule())
         widget_list.append(Static("\n  [bold cyan]🗄  DATA MANAGEMENT[/]", classes="settings-section-header"))
@@ -1431,36 +1433,6 @@ class SettingsScreen(BaseScreen):
                 severity="error",
             )
 
-    @on(Button.Pressed, "#gh-pat")
-    def connect_pat(self) -> None:
-        pat = self.query_one("#pat-input", Input).value.strip()
-        if not pat:
-            self.app.show_notification("GitHub token required", severity="warning")
-            return
-        ok, msg = self.app.github_sync.authenticate_pat(pat)
-        if ok:
-            self.app.show_notification(msg, severity="information")
-            self._build_settings()
-        else:
-            self.app.show_notification(f"Authentication failed: {msg}", severity="error")
-
-    @on(Button.Pressed, "#gh-disconnect")
-    def disconnect_gh(self) -> None:
-        self.app.github_sync.disconnect()
-        self._build_settings()
-        self.app.show_notification("Disconnected from GitHub", severity="information")
-
-    @on(Button.Pressed, "#publish-portfolio")
-    def publish_portfolio(self) -> None:
-        content, path = self.app.progress_engine.generate_portfolio()
-        result = self.app.github_sync.publish_portfolio(content)
-        if result.success:
-            self.app.show_notification(
-                f"Portfolio published: {result.repo_url}", severity="information"
-            )
-        else:
-            self.app.show_notification(f"Publish failed: {result.error}", severity="error")
-
     @on(Button.Pressed, "#export-portfolio")
     def export_portfolio(self) -> None:
         content, path = self.app.progress_engine.generate_portfolio()
@@ -1472,19 +1444,7 @@ class SettingsScreen(BaseScreen):
     def reset_progress(self) -> None:
         def handle_confirm(confirmed: bool | None) -> None:
             if confirmed:
-                self.app.db.conn.executescript("""
-                    DELETE FROM lesson_history;
-                    DELETE FROM challenge_history;
-                    DELETE FROM mission_history;
-                    DELETE FROM achievements;
-                    DELETE FROM command_history;
-                    DELETE FROM sessions;
-                    UPDATE user SET xp=0, level=1, rank_title='Terminal Novice', streak=0;
-                    UPDATE progress SET lessons_completed=0, challenges_solved=0,
-                        missions_completed=0, quizzes_taken=0, quiz_correct=0,
-                        commands_executed=0, time_spent_mins=0, tracks_completed='[]';
-                """)
-                self.app.db.conn.commit()
+                self.app.db.reset_all_progress()
                 self.app.show_notification("All progress has been reset", severity="warning")
                 self._build_settings()
 
@@ -1581,3 +1541,132 @@ class EnvScanScreen(Screen):
 
     def action_continue_app(self) -> None:
         self.dismiss()
+
+
+# ──────────────────────── Screen: GitHub Space ────────────────────────
+
+class GitHubSpaceScreen(BaseScreen):
+    """Local git workspace — init, add, commit, push, pull, status, log."""
+
+    def __init__(self):
+        super().__init__(screen_name="github_space")
+        self._repo_path = str(Path.home() / "shellmentor-portfolio")
+
+    def render_content(self) -> ComposeResult:
+        with Horizontal(id="gh-layout"):
+            with Vertical(id="gh-sidebar"):
+                yield Static("GIT COMMANDS")
+                yield Button("git init",        id="git-init",      variant="primary")
+                yield Button("git status",      id="git-status",    variant="default")
+                yield Button("git add .",       id="git-add",       variant="default")
+                yield Button("git commit",      id="git-commit",    variant="default")
+                yield Button("git push",        id="git-push",      variant="success")
+                yield Button("git pull",        id="git-pull",      variant="warning")
+                yield Button("git log",         id="git-log",       variant="default")
+                yield Rule()
+                yield Static("REPO PATH")
+                yield Input(value=self._repo_path, id="repo-path-input")
+                yield Button("Set Path", id="set-repo-path", variant="primary")
+            with Vertical(id="gh-main"):
+                yield RichLog(id="gh-output", highlight=True, markup=True, auto_scroll=True)
+
+    DEFAULT_CSS = """
+    #gh-layout { height: 1fr; }
+    #gh-sidebar {
+        width: 30;
+        background: #0e1117;
+        border-right: solid #1e2030;
+        padding: 1;
+    }
+    #gh-sidebar Button { width: 100%; margin: 0 0 1 0; }
+    #gh-main { background: #0a0e14; padding: 1; }
+    #gh-output { height: 1fr; background: #060a0f; border: solid #1e2030; }
+    """
+
+    def on_mount(self) -> None:
+        output = self.query_one("#gh-output", RichLog)
+        output.write(Text.from_markup(
+            f"[bold]Git Workspace[/]  [dim]{self._repo_path}[/]\n"
+            f"[dim]{'-' * 50}[/]\n"
+            f"[dim]Click a command button to run it.[/]\n"
+        ))
+
+    def _run_git(self, args: list[str], capture_output: bool = True) -> tuple[int, str, str]:
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=self._repo_path,
+                capture_output=capture_output,
+                text=True,
+                timeout=30,
+            )
+            return result.returncode, result.stdout, result.stderr
+        except FileNotFoundError:
+            return 127, "", "git: command not found. Install git first."
+        except subprocess.TimeoutExpired:
+            return 124, "", "git command timed out after 30s."
+        except Exception as e:
+            return 1, "", str(e)
+
+    def _show_output(self, cmd: str, rc: int, stdout: str, stderr: str) -> None:
+        output = self.query_one("#gh-output", RichLog)
+        color = "green" if rc == 0 else "red"
+        output.write(Text.from_markup(f"\n[cyan]$ {cmd}[/]"))
+        if stdout.strip():
+            output.write(stdout.rstrip())
+        if stderr.strip():
+            output.write(Text.from_markup(f"[red]{stderr.rstrip()}[/]"))
+        if rc != 0:
+            output.write(Text.from_markup(f"[red]exit {rc}[/]"))
+        else:
+            output.write(Text.from_markup("[green]OK[/]"))
+
+    @on(Button.Pressed, "#git-init")
+    def git_init(self) -> None:
+        from pathlib import Path as _P
+        _P(self._repo_path).mkdir(parents=True, exist_ok=True)
+        rc, out, err = self._run_git(["init"])
+        self._show_output("git init", rc, out, err)
+
+    @on(Button.Pressed, "#git-status")
+    def git_status(self) -> None:
+        rc, out, err = self._run_git(["status"])
+        self._show_output("git status", rc, out, err)
+
+    @on(Button.Pressed, "#git-add")
+    def git_add(self) -> None:
+        rc, out, err = self._run_git(["add", "."])
+        self._show_output("git add .", rc, out, err)
+
+    @on(Button.Pressed, "#git-commit")
+    def git_commit(self) -> None:
+        from datetime import datetime
+        msg = f"ShellMentor portfolio update — {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        rc, out, err = self._run_git(["commit", "-m", msg])
+        self._show_output(f'git commit -m "{msg}"', rc, out, err)
+
+    @on(Button.Pressed, "#git-push")
+    def git_push(self) -> None:
+        rc, out, err = self._run_git(["push"])
+        self._show_output("git push", rc, out, err)
+
+    @on(Button.Pressed, "#git-pull")
+    def git_pull(self) -> None:
+        rc, out, err = self._run_git(["pull"])
+        self._show_output("git pull", rc, out, err)
+
+    @on(Button.Pressed, "#git-log")
+    def git_log(self) -> None:
+        rc, out, err = self._run_git(["log", "--oneline", "-20"])
+        self._show_output("git log --oneline -20", rc, out, err)
+
+    @on(Button.Pressed, "#set-repo-path")
+    def set_repo_path(self) -> None:
+        new_path = self.query_one("#repo-path-input", Input).value.strip()
+        if new_path:
+            self._repo_path = new_path
+            from pathlib import Path as _P
+            _P(new_path).mkdir(parents=True, exist_ok=True)
+            output = self.query_one("#gh-output", RichLog)
+            output.write(Text.from_markup(f"[green]Repo path set to:[/] {new_path}"))
