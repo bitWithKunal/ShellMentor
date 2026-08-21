@@ -1,0 +1,120 @@
+Mar 15 08:23:01 webserver01 sshd[12345]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 08:23:05 webserver01 kernel: [12345.678] TCP: Established connection on eth0 from 192.168.1.1
+Mar 15 08:25:12 webserver01 nginx[6789]: 2024/03/15 08:25:12 [warn] upstream timed out
+Mar 15 08:30:45 webserver01 systemd[1]: Started Daily cleanup of temp directories.
+Mar 15 08:35:12 webserver01 sshd[12346]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 08:35:12 webserver01 sshd[12346]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 08:35:13 webserver01 sshd[12346]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 08:40:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 08:45:33 webserver01 kernel: [12400.123] EXT4-fs warning: mounting unchecked fs, running e2fsck is recommended
+Mar 15 08:50:01 webserver01 sshd[12347]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 09:00:00 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 09:05:22 webserver01 nginx[6789]: 2024/03/15 09:05:22 [notice] worker process started
+Mar 15 09:10:44 webserver01 kernel: [12600.456] CPU0: Package C-state not demoted
+Mar 15 09:15:30 webserver01 sshd[12348]: Failed password for admin from 198.51.100.7 port 22 ssh2
+Mar 15 09:15:30 webserver01 sshd[12348]: Failed password for admin from 198.51.100.7 port 22 ssh2
+Mar 15 09:15:31 webserver01 sshd[12348]: Connection closed by 198.51.100.7 port 22 [preauth]
+Mar 15 09:20:00 webserver01 sshd[12349]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 09:20:01 webserver01 sshd[12349]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 09:20:01 webserver01 sshd[12349]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 09:20:02 webserver01 sshd[12349]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 09:20:05 webserver01 fail2ban[2345]: Ban 203.0.113.50
+Mar 15 09:25:15 webserver01 crond[1001]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)
+Mar 15 09:30:00 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 09:35:45 webserver01 nginx[6789]: 2024/03/15 09:35:45 [notice] signal process started
+Mar 15 09:40:00 webserver01 kernel: [12900.789] ath9k: firmware requested: firmware-5.bin
+Mar 15 09:45:00 webserver01 sshd[12350]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 09:50:30 webserver01 systemd[1]: Started Generate /run/cryptsetup.keys for LUKS.
+Mar 15 10:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 10:05:15 webserver01 nginx[6789]: 2024/03/15 10:05:15 [notice] worker process 6790 exited with code 0
+Mar 15 10:10:30 webserver01 sshd[12351]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 10:15:45 webserver01 kernel: [13200.012] ath9k: firmware requested: firmware-2.bin
+Mar 15 10:20:00 webserver01 sshd[12352]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 10:20:00 webserver01 sshd[12352]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 10:20:01 webserver01 sshd[12352]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 10:20:05 webserver01 fail2ban[2345]: Ban 203.0.113.50
+Mar 15 10:25:30 webserver01 nginx[6789]: 2024/03/15 10:25:30 [notice] graceful shutdown
+Mar 15 10:30:00 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 10:35:15 webserver01 crond[1001]: (root) CMD (/usr/bin/logwatch --output mail)
+Mar 15 10:40:30 webserver01 kernel: [13500.345] TCP: Out of memory -- consider tuning tcp_mem
+Mar 15 10:45:45 webserver01 sshd[12353]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 10:50:00 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 11:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 11:05:15 webserver01 nginx[6789]: 2024/03/15 11:05:15 [notice] signal process started
+Mar 15 11:10:30 webserver01 sshd[12354]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 11:10:31 webserver01 sshd[12354]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 11:15:45 webserver01 kernel: [13800.678] ath9k: firmware requested: firmware-3.bin
+Mar 15 11:20:00 webserver01 systemd[1]: Started Daily cleanup of temp directories.
+Mar 15 11:25:15 webserver01 crond[1001]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)
+Mar 15 11:30:30 webserver01 sshd[12355]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 11:35:45 webserver01 nginx[6789]: 2024/03/15 11:35:45 [notice] worker process started
+Mar 15 11:40:00 webserver01 fail2ban[2345]: Unban 203.0.113.50
+Mar 15 11:45:15 webserver01 kernel: [14100.901] ath9k: firmware requested: firmware-4.bin
+Mar 15 11:50:30 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 12:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 12:05:15 webserver01 sshd[12356]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 12:10:30 webserver01 nginx[6789]: 2024/03/15 12:10:30 [notice] signal process started
+Mar 15 12:15:45 webserver01 kernel: [14400.234] EXT4-fs (sda1): re-mounted. Options: errors=continue
+Mar 15 12:20:00 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 12:25:15 webserver01 sshd[12357]: Failed password for root from 198.51.100.7 port 22 ssh2
+Mar 15 12:25:15 webserver01 sshd[12357]: Failed password for root from 198.51.100.7 port 22 ssh2
+Mar 15 12:25:15 webserver01 sshd[12357]: Failed password for root from 198.51.100.7 port 22 ssh2
+Mar 15 12:25:16 webserver01 sshd[12357]: Connection closed by 198.51.100.7 port 22 [preauth]
+Mar 15 12:25:20 webserver01 fail2ban[2345]: Ban 198.51.100.7
+Mar 15 12:30:30 webserver01 crond[1001]: (root) CMD (/usr/bin/logwatch --output mail)
+Mar 15 12:35:45 webserver01 kernel: [14700.567] TCP: Possible SYN flooding on port 80. Sending cookies.
+Mar 15 12:40:00 webserver01 nginx[6789]: 2024/03/15 12:40:00 [notice] graceful shutdown
+Mar 15 12:45:15 webserver01 systemd[1]: Started Daily cleanup of temp directories.
+Mar 15 12:50:30 webserver01 sshd[12358]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 13:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 13:05:15 webserver01 sshd[12359]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 13:05:16 webserver01 sshd[12359]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 13:10:30 webserver01 kernel: [15000.890] ath9k: firmware requested: firmware-1.bin
+Mar 15 13:15:45 webserver01 nginx[6789]: 2024/03/15 13:15:45 [notice] worker process started
+Mar 15 13:20:00 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 13:25:15 webserver01 crond[1001]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)
+Mar 15 13:30:30 webserver01 sshd[12360]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 13:35:45 webserver01 kernel: [15300.123] TCP: Out of memory -- consider tuning tcp_mem
+Mar 15 13:40:00 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 13:45:15 webserver01 nginx[6789]: 2024/03/15 13:45:15 [notice] signal process started
+Mar 15 13:50:30 webserver01 fail2ban[2345]: Unban 198.51.100.7
+Mar 15 14:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 14:05:15 webserver01 sshd[12361]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 14:05:16 webserver01 sshd[12361]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 14:10:30 webserver01 kernel: [15600.456] ath9k: firmware requested: firmware-2.bin
+Mar 15 14:15:45 webserver01 systemd[1]: Started Daily cleanup of temp directories.
+Mar 15 14:20:00 webserver01 sshd[12362]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 14:25:15 webserver01 nginx[6789]: 2024/03/15 14:25:15 [notice] graceful shutdown
+Mar 15 14:30:30 webserver01 crond[1001]: (root) CMD (/usr/bin/logwatch --output mail)
+Mar 15 14:35:45 webserver01 kernel: [15900.789] EXT4-fs warning: mounting unchecked fs
+Mar 15 14:40:00 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 14:45:15 webserver01 sshd[12363]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 14:50:30 webserver01 nginx[6789]: 2024/03/15 14:50:30 [notice] worker process started
+Mar 15 15:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 15:05:15 webserver01 sshd[12364]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 15:05:16 webserver01 sshd[12364]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 15:10:30 webserver01 kernel: [16200.012] ath9k: firmware requested: firmware-5.bin
+Mar 15 15:15:45 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 15:20:00 webserver01 fail2ban[2345]: Unban 203.0.113.50
+Mar 15 15:25:15 webserver01 crond[1001]: (root) CMD (/usr/sbin/logrotate /etc/logrotate.conf)
+Mar 15 15:30:30 webserver01 sshd[12365]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 15:35:45 webserver01 nginx[6789]: 2024/03/15 15:35:45 [notice] signal process started
+Mar 15 15:40:00 webserver01 kernel: [16500.345] TCP: Possible SYN flooding on port 443. Sending cookies.
+Mar 15 15:45:15 webserver01 systemd[1]: Started Daily cleanup of temp directories.
+Mar 15 15:50:30 webserver01 sshd[12366]: Failed password for root from 198.51.100.7 port 22 ssh2
+Mar 15 15:50:30 webserver01 sshd[12366]: Failed password for root from 198.51.100.7 port 22 ssh2
+Mar 15 15:50:31 webserver01 sshd[12366]: Connection closed by 198.51.100.7 port 22 [preauth]
+Mar 15 15:50:35 webserver01 fail2ban[2345]: Ban 198.51.100.7
+Mar 15 16:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)
+Mar 15 16:05:15 webserver01 kernel: [16800.678] ath9k: firmware requested: firmware-3.bin
+Mar 15 16:10:30 webserver01 systemd[1]: Started Daily apt download activities.
+Mar 15 16:15:45 webserver01 sshd[12367]: Accepted publickey for admin from 192.168.1.100 port 22 ssh2
+Mar 15 16:20:00 webserver01 nginx[6789]: 2024/03/15 16:20:00 [notice] graceful shutdown
+Mar 15 16:25:15 webserver01 crond[1001]: (root) CMD (/usr/bin/logwatch --output mail)
+Mar 15 16:30:30 webserver01 sshd[12368]: Failed password for root from 203.0.113.50 port 22 ssh2
+Mar 15 16:30:31 webserver01 sshd[12368]: Connection closed by 203.0.113.50 port 22 [preauth]
+Mar 15 16:35:45 webserver01 kernel: [17100.901] EXT4-fs (sda1): re-mounted. Options: errors=continue
+Mar 15 16:40:00 webserver01 systemd[1]: Started Clean up old apt packages.
+Mar 15 16:45:15 webserver01 nginx[6789]: 2024/03/15 16:45:15 [notice] worker process started
+Mar 15 16:50:30 webserver01 sshd[12369]: Accepted password for operator1 from 192.168.1.25 port 22 ssh2
+Mar 15 17:00:00 webserver01 crond[1001]: (root) CMD (/usr/bin/systemctl restart nginx)

@@ -1,4 +1,6 @@
-textual>=0.80.0
-rich>=13.7.0
-pyyaml>=6.0.1
-platformdirs>=4.2.0
+# Pinned with upper bounds — Textual's markup parser and Screen internals
+# change between major versions. See pyproject.toml.
+textual>=1.0,<9
+rich>=13.7,<16
+pyyaml>=6.0.1,<7
+platformdirs>=4.2.0,<5

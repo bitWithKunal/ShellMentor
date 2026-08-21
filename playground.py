@@ -1,6 +1,6 @@
 """
 ShellMentor - playground.py
-Interactive command playground: execution, history, sessions, autocomplete, diff viewer.
+Interactive command lab: answer recording, history, sessions, autocomplete, diff viewer.
 """
 
 from __future__ import annotations
@@ -8,13 +8,12 @@ from __future__ import annotations
 import difflib
 import json
 import logging
-import shlex
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from utils import SandboxEngine, SandboxResult, WORKSPACE_DIR, SAFE_COMMANDS
+from utils import PracticeResult, WORKSPACE_DIR, SUPPORTED_COMMANDS
 from data_manager import DataManager
 
 logger = logging.getLogger("shellmentor")
@@ -90,10 +89,19 @@ COMMAND_COMPLETIONS: dict[str, list[str]] = {
 }
 
 DATASET_FILES = [
-    "apache.log", "nginx.log", "server.log", "syslog.log",
-    "employees.csv", "sales.csv",
-    "timing.rpt", "synthesis.log", "placement.rpt", "routing.rpt", "power.rpt",
-    "constraints.sdc", "liberty.lib", "netlist.v",
+    # Mirrors the files shipped in workspace/ — keep in sync.
+    "apache.log",
+    "article.txt",
+    "constraints.sdc",
+    "employees.csv",
+    "liberty.lib",
+    "names.txt",
+    "nginx.log",
+    "sales.csv",
+    "server.log",
+    "synthesis.log",
+    "syslog.log",
+    "timing.rpt",
 ]
 
 PIPELINE_TEMPLATES = [
@@ -190,7 +198,6 @@ class PlaygroundEngine:
 
     def __init__(self, db: DataManager):
         self.db = db
-        self.sandbox = SandboxEngine(WORKSPACE_DIR)
         self._session: PlaygroundSession | None = None
         self._history_index: int = -1
         self._on_output_callbacks: list[Callable] = []
@@ -200,7 +207,7 @@ class PlaygroundEngine:
     def on_output(self, callback: Callable) -> None:
         self._on_output_callbacks.append(callback)
 
-    def _fire_output(self, result: SandboxResult) -> None:
+    def _fire_output(self, result: PracticeResult) -> None:
         for cb in self._on_output_callbacks:
             try:
                 cb(result)
@@ -209,9 +216,16 @@ class PlaygroundEngine:
 
     # ── Execution ─────────────────────────────────────────────
 
-    def execute(self, command: str, context: str = "playground") -> SandboxResult:
-        """Execute a command in the sandbox."""
-        result = self.sandbox.run(command)
+    def submit_command(self, command: str, context: str = "playground") -> PracticeResult:
+        """Record a command answer without executing it on the host system."""
+        start = time.monotonic()
+        result = PracticeResult(
+            command=command,
+            stdout="Command recorded. ShellMentor never executes commands; run it in your own terminal when ready.",
+            stderr="",
+            exit_code=0,
+            duration_ms=(time.monotonic() - start) * 1000,
+        )
 
         # Record in DB
         self.db.record_command(
@@ -256,8 +270,8 @@ class PlaygroundEngine:
     def get_saved_sessions(self) -> list[dict]:
         return self.db.get_sessions()
 
-    def replay_session(self, session_id: int) -> list[SandboxResult]:
-        """Replay all commands from a saved session."""
+    def replay_session(self, session_id: int) -> list[PracticeResult]:
+        """Return recorded session commands without executing them."""
         sessions = self.db.get_sessions()
         session = next((s for s in sessions if s["id"] == session_id), None)
         if not session:
@@ -266,7 +280,7 @@ class PlaygroundEngine:
         commands = json.loads(session.get("commands", "[]"))
         results = []
         for cmd in commands:
-            result = self.sandbox.run(cmd)
+            result = PracticeResult(cmd, "Recorded command (not executed).", "", 0, 0)
             results.append(result)
         return results
 
@@ -308,7 +322,7 @@ class PlaygroundEngine:
         # Command-level completions
         if " " not in partial:
             # Complete command names
-            for cmd in SAFE_COMMANDS:
+            for cmd in SUPPORTED_COMMANDS:
                 if cmd.startswith(partial_lower):
                     suggestions.append(cmd)
             return sorted(suggestions)[:8]

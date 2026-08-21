@@ -1,17 +1,77 @@
 {
   "ranks": [
-    {"level": 1,  "title": "Terminal Novice",     "icon": "🌱", "xp_required": 0},
-    {"level": 2,  "title": "Shell Apprentice",    "icon": "🔰", "xp_required": 500},
-    {"level": 3,  "title": "Pattern Hunter",      "icon": "🎯", "xp_required": 1200},
-    {"level": 4,  "title": "Regex Apprentice",    "icon": "🔮", "xp_required": 2500},
-    {"level": 5,  "title": "Text Wrangler",       "icon": "📝", "xp_required": 4500},
-    {"level": 6,  "title": "Pipeline Builder",    "icon": "🔗", "xp_required": 7000},
-    {"level": 7,  "title": "Pipeline Master",     "icon": "⚡", "xp_required": 10000},
-    {"level": 8,  "title": "Log Investigator",    "icon": "🔬", "xp_required": 14000},
-    {"level": 9,  "title": "Automation Expert",   "icon": "🤖", "xp_required": 19000},
-    {"level": 10, "title": "Linux Architect",     "icon": "🏗️",  "xp_required": 25000},
-    {"level": 11, "title": "VLSI Investigator",   "icon": "💎", "xp_required": 32000},
-    {"level": 12, "title": "ShellMentor Grandmaster","icon": "👑","xp_required": 50000}
+    {
+      "level": 1,
+      "title": "Terminal Novice",
+      "icon": "🌱",
+      "xp_required": 0
+    },
+    {
+      "level": 2,
+      "title": "Shell Apprentice",
+      "icon": "🔰",
+      "xp_required": 500
+    },
+    {
+      "level": 3,
+      "title": "Pattern Hunter",
+      "icon": "🎯",
+      "xp_required": 1200
+    },
+    {
+      "level": 4,
+      "title": "Regex Apprentice",
+      "icon": "🔮",
+      "xp_required": 2500
+    },
+    {
+      "level": 5,
+      "title": "Text Wrangler",
+      "icon": "📝",
+      "xp_required": 4500
+    },
+    {
+      "level": 6,
+      "title": "Pipeline Builder",
+      "icon": "🔗",
+      "xp_required": 7000
+    },
+    {
+      "level": 7,
+      "title": "Pipeline Master",
+      "icon": "⚡",
+      "xp_required": 10000
+    },
+    {
+      "level": 8,
+      "title": "Log Investigator",
+      "icon": "🔬",
+      "xp_required": 14000
+    },
+    {
+      "level": 9,
+      "title": "Automation Expert",
+      "icon": "🤖",
+      "xp_required": 19000
+    },
+    {
+      "level": 10,
+      "title": "Linux Architect",
+      "icon": "🏗️",
+      "xp_required": 25000
+    },
+    {
+      "level": 11,
+      "title": "VLSI Investigator",
+      "icon": "💎",
+      "xp_required": 32000
+    },
+    {
+      "level": 12,
+      "title": "ShellMentor Grandmaster",
+      "icon": "👑",
+      "xp_required": 50000
+    }
   ],
   "achievements": [
     {
@@ -220,6 +280,78 @@
       "xp_reward": 100,
       "rarity": "uncommon",
       "trigger": "lesson_after_midnight"
+    },
+    {
+      "id": "scripting_master",
+      "title": "Script Writer",
+      "description": "Complete the Shell Scripting track",
+      "icon": "📜",
+      "xp_reward": 500,
+      "rarity": "rare",
+      "trigger": "track_scripting_complete"
+    },
+    {
+      "id": "network_pro",
+      "title": "Network Navigator",
+      "description": "Complete the Networking Fundamentals track",
+      "icon": "🌐",
+      "xp_reward": 500,
+      "rarity": "rare",
+      "trigger": "track_networking_complete"
+    },
+    {
+      "id": "lessons_20",
+      "title": "Knowledge Seeker",
+      "description": "Complete 20 lessons",
+      "icon": "📚",
+      "xp_reward": 800,
+      "rarity": "rare",
+      "trigger": "lessons_completed >= 20"
+    },
+    {
+      "id": "challenges_25",
+      "title": "Challenge Champion",
+      "description": "Complete 25 challenges",
+      "icon": "🏆",
+      "xp_reward": 1000,
+      "rarity": "epic",
+      "trigger": "challenges_solved >= 25"
+    },
+    {
+      "id": "commands_1000",
+      "title": "Terminal Titan",
+      "description": "Execute 1000 commands",
+      "icon": "⚡",
+      "xp_reward": 750,
+      "rarity": "rare",
+      "trigger": "commands_executed >= 1000"
+    },
+    {
+      "id": "streak_14",
+      "title": "Fortnight Warrior",
+      "description": "Maintain a 14-day learning streak",
+      "icon": "🌟",
+      "xp_reward": 500,
+      "rarity": "uncommon",
+      "trigger": "streak >= 14"
+    },
+    {
+      "id": "hint_free_10",
+      "title": "Independent Thinker",
+      "description": "Solve 10 challenges without using hints",
+      "icon": "🧠",
+      "xp_reward": 600,
+      "rarity": "rare",
+      "trigger": "challenges_nohint >= 10"
+    },
+    {
+      "id": "all_tracks",
+      "title": "Track Collector",
+      "description": "Complete at least one lesson in every track",
+      "icon": "🎯",
+      "xp_reward": 1500,
+      "rarity": "legendary",
+      "trigger": "all_tracks_complete"
     }
   ]
 }

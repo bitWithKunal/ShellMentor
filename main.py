@@ -11,13 +11,14 @@ import logging
 import os
 import sys
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.theme import Theme
-from textual.widgets import Footer, Header, Static, Label, ListItem, ListView, Input
-from textual.containers import Container, Horizontal, Vertical
+from textual.widgets import Footer, Header, Label, ListItem, ListView, Input
+from textual.containers import Container
 from textual import on
 from textual.screen import Screen
 
@@ -25,11 +26,8 @@ from data_manager import DataManager
 from learning import LearningEngine
 from challenge import ChallengeEngine
 from playground import PlaygroundEngine
-from progress import ProgressEngine, LevelUpEvent, XPEvent
-from utils import (
-    detect_system, APP_NAME, APP_VERSION,
-    load_yaml, THEMES_DIR, DATA_DIR, format_xp
-)
+from progress import ProgressEngine, LevelUpEvent
+from utils import detect_system, APP_VERSION, load_yaml, THEMES_DIR
 
 # ── Import all screens from ui module ──
 from ui import (
@@ -37,19 +35,34 @@ from ui import (
     ChallengesScreen, MissionsScreen, AchievementsScreen,
     NotesScreen, AnalyticsScreen, SettingsScreen,
     EnvScanScreen, LevelUpModal, AchievementModal,
-    QuizScreen, ChallengeScreen, MissionScreen,
     GitHubSpaceScreen,
 )
 
-# ── Logging ──
-logging.basicConfig(
-    level=logging.WARNING,
-    format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    handlers=[
-        logging.FileHandler(Path.home() / ".shellmentor.log"),
-    ]
-)
 logger = logging.getLogger("shellmentor")
+
+LOG_PATH = Path.home() / ".shellmentor.log"
+
+
+def configure_logging() -> None:
+    """Attach a rotating file handler to ShellMentor's own logger.
+
+    Called from main() rather than at import time so importing this module
+    (tests, tooling) does not reconfigure root logging for the whole process.
+    """
+    if logger.handlers:
+        return
+    try:
+        handler = RotatingFileHandler(
+            LOG_PATH, maxBytes=512_000, backupCount=2, encoding="utf-8"
+        )
+    except OSError:
+        return
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s")
+    )
+    logger.addHandler(handler)
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
 
 
 # ──────────────────────── OS username detection ────────────────────────
@@ -443,21 +456,22 @@ class ShellMentorApp(App):
         Binding("ctrl+a", "go_achievements",   "Achievements"),
         Binding("ctrl+n", "go_notes",          "Notes"),
         Binding("ctrl+r", "go_analytics",      "Analytics"),
-        Binding("ctrl+s", "go_settings",       "Settings"),
+        Binding("ctrl+t", "go_settings",       "Settings"),
         Binding("ctrl+u", "go_github_space",   "Git Space"),
         Binding("ctrl+d", "go_dashboard",      "Dashboard"),
         Binding("ctrl+q", "quit",              "Quit"),
         Binding("f1",     "go_dashboard",      "Dashboard", show=False),
     ]
 
-    def __init__(self, **kwargs):
+    def __init__(self, db_path: Path | None = None, **kwargs):
         super().__init__(**kwargs)
-        # Initialize core services
-        self.db               = DataManager()
+        # Initialize core services. db_path lets tests (and anyone embedding
+        # the app) run against a scratch database instead of the real one.
+        self.db               = DataManager(db_path)
         self.learning_engine  = LearningEngine(self.db)
-        self.challenge_engine = ChallengeEngine(self.db)
-        self.playground_engine= PlaygroundEngine(self.db)
         self.progress_engine  = ProgressEngine(self.db)
+        self.challenge_engine = ChallengeEngine(self.db, self.progress_engine)
+        self.playground_engine= PlaygroundEngine(self.db)
 
         # Temp state
         self._selected_challenge: str | None = None
@@ -695,6 +709,7 @@ def main() -> None:
         print(f"ShellMentor requires Python 3.10+. Found: {sys.version}")
         sys.exit(1)
 
+    configure_logging()
     app = ShellMentorApp()
     app.run()
 

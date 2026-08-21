@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -23,8 +22,10 @@ DB_PATH = Path(user_data_dir("ShellMentor", "AndGate")) / "shellmentor.db"
 class DataManager:
     """Central SQLite data store for ShellMentor."""
 
-    def __init__(self, db_path: Path = DB_PATH):
-        self.db_path = db_path
+    def __init__(self, db_path: Path | None = None):
+        # Resolved at call time (not bound at import time) so tests and callers
+        # can point ShellMentor at a scratch database.
+        self.db_path = Path(db_path) if db_path is not None else DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
         self._init_db()
@@ -61,6 +62,7 @@ class DataManager:
                 level         INTEGER DEFAULT 1,
                 rank_title    TEXT DEFAULT 'Terminal Novice',
                 streak        INTEGER DEFAULT 0,
+                challenge_streak INTEGER DEFAULT 0,
                 last_active   TEXT,
                 created_at    TEXT DEFAULT (datetime('now')),
                 theme         TEXT DEFAULT 'professional_dark',
@@ -92,7 +94,8 @@ class DataManager:
                 xp_earned   INTEGER DEFAULT 0,
                 time_spent  INTEGER DEFAULT 0,
                 completed_at TEXT,
-                attempts    INTEGER DEFAULT 1
+                attempts    INTEGER DEFAULT 1,
+                current_section INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS challenge_history (
@@ -114,6 +117,7 @@ class DataManager:
                 mission_id  TEXT NOT NULL,
                 stage       INTEGER DEFAULT 0,
                 completed   INTEGER DEFAULT 0,
+                is_final    INTEGER DEFAULT 0,
                 xp_earned   INTEGER DEFAULT 0,
                 completed_at TEXT
             );
@@ -160,11 +164,28 @@ class DataManager:
             );
 
             CREATE TABLE IF NOT EXISTS analytics (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                id          INTEGER PRIMARY KEY,
                 user_id     INTEGER DEFAULT 1,
                 event_type  TEXT NOT NULL,
                 event_data  TEXT DEFAULT '{}',
                 recorded_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER DEFAULT 1,
+                lesson_id   TEXT NOT NULL,
+                created_at  TEXT DEFAULT (datetime('now')),
+                UNIQUE(user_id, lesson_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS certificates (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER DEFAULT 1,
+                lesson_id   TEXT NOT NULL,
+                track_id    TEXT NOT NULL,
+                score       INTEGER DEFAULT 0,
+                issued_at   TEXT DEFAULT (datetime('now'))
             );
         """)
 
@@ -177,15 +198,105 @@ class DataManager:
         """)
         conn.commit()
 
+        # Migrations for existing databases
+        try:
+            conn.execute("SELECT current_section FROM lesson_history LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE lesson_history ADD COLUMN current_section INTEGER DEFAULT 0")
+            conn.commit()
+        try:
+            conn.execute("SELECT challenge_streak FROM user LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE user ADD COLUMN challenge_streak INTEGER DEFAULT 0")
+            conn.commit()
+        try:
+            conn.execute("SELECT is_final FROM mission_history LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE mission_history ADD COLUMN is_final INTEGER DEFAULT 0")
+            # Legacy rows used stage 999 as the \'mission finished\' sentinel.
+            conn.execute("UPDATE mission_history SET is_final=1 WHERE stage>=999")
+            conn.commit()
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS meta (
+                key   TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        conn.commit()
+        self._run_repairs()
+
+    # ── Repairs ─────────────────────────────────────────────
+
+    SCHEMA_VERSION = 2
+
+    def _run_repairs(self) -> None:
+        """Recompute derived counters that older versions over-counted."""
+        conn = self._connect()
+        row = conn.execute("SELECT value FROM meta WHERE key=\'schema_version\'").fetchone()
+        current = int(row["value"]) if row else 0
+        if current >= self.SCHEMA_VERSION:
+            return
+        try:
+            self.recompute_progress_counters()
+        except Exception as e:
+            logger.warning(f"Progress repair failed: {e}")
+        conn.execute(
+            "INSERT OR REPLACE INTO meta (key, value) VALUES (\'schema_version\', ?)",
+            (str(self.SCHEMA_VERSION),)
+        )
+        conn.commit()
+
+    def recompute_progress_counters(self) -> dict:
+        """Rebuild lesson/challenge/mission counters from history tables.
+
+        Earlier releases incremented these on every repeat completion and once
+        per mission *stage*, so stored values drift above reality.
+        """
+        conn = self._connect()
+        lessons = conn.execute(
+            "SELECT COUNT(DISTINCT lesson_id) c FROM lesson_history WHERE user_id=1 AND completed=1"
+        ).fetchone()["c"]
+        challenges = conn.execute(
+            "SELECT COUNT(DISTINCT challenge_id) c FROM challenge_history WHERE user_id=1 AND solved=1"
+        ).fetchone()["c"]
+        nohint = conn.execute(
+            "SELECT COUNT(DISTINCT challenge_id) c FROM challenge_history "
+            "WHERE user_id=1 AND solved=1 AND hints_used=0"
+        ).fetchone()["c"]
+        missions = conn.execute(
+            "SELECT COUNT(DISTINCT mission_id) c FROM mission_history WHERE user_id=1 AND is_final=1"
+        ).fetchone()["c"]
+        commands = conn.execute(
+            "SELECT COUNT(*) c FROM command_history WHERE user_id=1"
+        ).fetchone()["c"]
+        conn.execute("""
+            UPDATE progress SET lessons_completed=?, challenges_solved=?,
+                challenges_nohint=?, missions_completed=?, commands_executed=?
+            WHERE user_id=1
+        """, (lessons, challenges, nohint, missions, commands))
+        conn.commit()
+        return {"lessons_completed": lessons, "challenges_solved": challenges,
+                "challenges_nohint": nohint, "missions_completed": missions,
+                "commands_executed": commands}
+
     # ── User ────────────────────────────────────────────────
 
     def get_user(self) -> dict:
         row = self.conn.execute("SELECT * FROM user WHERE id=1").fetchone()
         return dict(row) if row else {}
 
+    USER_COLUMNS = frozenset({
+        "username", "xp", "level", "rank_title", "streak", "challenge_streak",
+        "last_active", "theme", "settings",
+    })
+
     def update_user(self, **kwargs) -> None:
         if not kwargs:
             return
+        unknown = set(kwargs) - self.USER_COLUMNS
+        if unknown:
+            raise ValueError(f"Unknown user column(s): {sorted(unknown)}")
         sets = ", ".join(f"{k}=?" for k in kwargs)
         vals = list(kwargs.values())
         self.conn.execute(f"UPDATE user SET {sets} WHERE id=1", vals)
@@ -256,8 +367,17 @@ class DataManager:
             return d
         return {}
 
+    PROGRESS_COLUMNS = frozenset({
+        "lessons_completed", "challenges_solved", "missions_completed",
+        "quizzes_taken", "quiz_correct", "commands_executed",
+        "time_spent_mins", "challenges_nohint",
+    })
+
     def increment_progress(self, **kwargs) -> None:
-        """Increment integer progress fields."""
+        """Increment integer progress fields (column names are whitelisted)."""
+        unknown = set(kwargs) - self.PROGRESS_COLUMNS
+        if unknown:
+            raise ValueError(f"Unknown progress column(s): {sorted(unknown)}")
         for field, amount in kwargs.items():
             self.conn.execute(
                 f"UPDATE progress SET {field}={field}+? WHERE user_id=1", (amount,)
@@ -286,9 +406,11 @@ class DataManager:
     def record_lesson_completion(self, lesson_id: str, track_id: str,
                                   score: int, xp: int, time_spent: int) -> None:
         existing = self.conn.execute(
-            "SELECT id FROM lesson_history WHERE user_id=1 AND lesson_id=?",
+            "SELECT id, completed FROM lesson_history WHERE user_id=1 AND lesson_id=?",
             (lesson_id,)
         ).fetchone()
+
+        first_completion = not (existing and existing["completed"])
 
         if existing:
             self.conn.execute("""
@@ -306,7 +428,9 @@ class DataManager:
                   datetime.now().isoformat()))
 
         self.conn.commit()
-        self.increment_progress(lessons_completed=1, time_spent_mins=time_spent // 60)
+        self.increment_progress(time_spent_mins=time_spent // 60)
+        if first_completion:
+            self.increment_progress(lessons_completed=1)
 
     # ── Challenges ───────────────────────────────────────────
 
@@ -324,8 +448,9 @@ class DataManager:
             (challenge_id,)
         ).fetchone()
 
+        already_solved = bool(existing["solved"]) if existing else False
+
         if existing:
-            already_solved = existing["solved"]
             self.conn.execute("""
                 UPDATE challenge_history SET
                     solved=MAX(solved,?), attempts=attempts+1,
@@ -347,7 +472,7 @@ class DataManager:
                   datetime.now().isoformat() if solved else None))
 
         self.conn.commit()
-        if solved:
+        if solved and not already_solved:
             self.increment_progress(challenges_solved=1)
             if hints == 0:
                 self.increment_progress(challenges_nohint=1)
@@ -355,29 +480,45 @@ class DataManager:
     # ── Missions ─────────────────────────────────────────────
 
     def get_mission_progress(self, mission_id: str) -> int:
-        """Return highest stage completed for a mission."""
+        """Return highest stage completed for a mission (excluding the
+        mission-completion marker row)."""
         row = self.conn.execute("""
             SELECT MAX(stage) as max_stage FROM mission_history
-            WHERE user_id=1 AND mission_id=?
+            WHERE user_id=1 AND mission_id=? AND is_final=0 AND completed=1
         """, (mission_id,)).fetchone()
         return row["max_stage"] or 0
 
     def get_completed_missions(self) -> set[str]:
+        """Missions the user actually finished — not merely started."""
         rows = self.conn.execute(
-            "SELECT DISTINCT mission_id FROM mission_history WHERE user_id=1 AND completed=1"
+            "SELECT DISTINCT mission_id FROM mission_history WHERE user_id=1 AND is_final=1"
         ).fetchall()
         return {row["mission_id"] for row in rows}
 
     def record_mission_stage(self, mission_id: str, stage: int,
                               completed: bool, xp: int) -> None:
+        """Record a single completed mission stage. Never touches the
+        missions_completed counter — see record_mission_complete()."""
         self.conn.execute("""
-            INSERT INTO mission_history (user_id, mission_id, stage, completed, xp_earned, completed_at)
-            VALUES (1,?,?,?,?,?)
+            INSERT INTO mission_history
+                (user_id, mission_id, stage, completed, is_final, xp_earned, completed_at)
+            VALUES (1,?,?,?,0,?,?)
         """, (mission_id, stage, int(completed), xp,
               datetime.now().isoformat() if completed else None))
         self.conn.commit()
-        if completed:
+
+    def record_mission_complete(self, mission_id: str, xp: int = 0) -> bool:
+        """Mark a mission finished. Returns True if this is the first time."""
+        first_time = mission_id not in self.get_completed_missions()
+        self.conn.execute("""
+            INSERT INTO mission_history
+                (user_id, mission_id, stage, completed, is_final, xp_earned, completed_at)
+            VALUES (1,?,?,1,1,?,?)
+        """, (mission_id, 0, xp, datetime.now().isoformat()))
+        self.conn.commit()
+        if first_time:
             self.increment_progress(missions_completed=1)
+        return first_time
 
     # ── Achievements ─────────────────────────────────────────
 
@@ -388,15 +529,20 @@ class DataManager:
         return {row["achievement_id"] for row in rows}
 
     def award_achievement(self, achievement_id: str, xp: int) -> bool:
-        """Award achievement. Returns True if newly earned."""
+        """Award achievement. Returns True only if the row was newly inserted.
+
+        conn.total_changes is cumulative for the whole connection, so it must
+        not be used here — cursor.rowcount reports this statement alone.
+        """
         try:
-            self.conn.execute("""
+            cur = self.conn.execute("""
                 INSERT OR IGNORE INTO achievements (user_id, achievement_id, xp_earned)
                 VALUES (1,?,?)
             """, (achievement_id, xp))
             self.conn.commit()
-            return self.conn.total_changes > 0
-        except Exception:
+            return cur.rowcount > 0
+        except Exception as e:
+            logger.warning(f"Could not award achievement {achievement_id}: {e}")
             return False
 
     def check_and_award_achievements(self, achievements_data: list[dict],
@@ -409,16 +555,25 @@ class DataManager:
 
         now = datetime.now()
         stats = {
-            "total_xp":          user.get("xp", 0),
-            "streak":            user.get("streak", 0),
-            "lessons_completed": progress.get("lessons_completed", 0),
-            "challenges_solved": progress.get("challenges_solved", 0),
-            "missions_completed":progress.get("missions_completed", 0),
-            "challenges_nohint": progress.get("challenges_nohint", 0),
-            "notes_created":     self._count_notes(),
-            "tracks_completed":  progress.get("tracks_completed", []),
-            "current_hour":      now.hour,
+            "total_xp":           user.get("xp", 0),
+            "streak":             user.get("streak", 0),
+            "lessons_completed":  progress.get("lessons_completed", 0),
+            "challenges_solved":  progress.get("challenges_solved", 0),
+            "missions_completed": progress.get("missions_completed", 0),
+            "challenges_nohint":  progress.get("challenges_nohint", 0),
+            "commands_executed":  progress.get("commands_executed", 0),
+            "quizzes_taken":      progress.get("quizzes_taken", 0),
+            "quiz_correct":       progress.get("quiz_correct", 0),
+            "notes_created":      self._count_notes(),
+            "tracks_completed":   progress.get("tracks_completed", []),
+            "tracks_completed_count": len(progress.get("tracks_completed", [])),
+            "current_hour":       now.hour,
+            "fastest_solve":      self._fastest_solve_seconds(),
+            "longest_pipeline":   self._longest_pipeline(),
+            "portfolio_generated": bool(self.get_setting("portfolio_generated", False)),
         }
+        if context:
+            stats.update(context)
 
         for ach in achievements_data:
             aid = ach["id"]
@@ -431,10 +586,28 @@ class DataManager:
             if awarded:
                 if self.award_achievement(aid, ach.get("xp_reward", 0)):
                     newly_earned.append(ach)
-                    # Add the XP bonus
-                    self.add_xp(ach.get("xp_reward", 0))
 
+        # NB: the XP bonus is *not* applied here. ProgressEngine awards it so
+        # that a level-up triggered by achievement XP still fires its event.
         return newly_earned
+
+    def _fastest_solve_seconds(self) -> float:
+        """Best (lowest) recorded solve time, or 0.0 when nothing is solved."""
+        row = self.conn.execute(
+            "SELECT MIN(best_time) t FROM challenge_history "
+            "WHERE user_id=1 AND solved=1 AND best_time > 0"
+        ).fetchone()
+        return float(row["t"]) if row and row["t"] is not None else 0.0
+
+    def _longest_pipeline(self) -> int:
+        """Most pipe-separated stages seen in any recorded command."""
+        rows = self.conn.execute(
+            "SELECT command FROM command_history WHERE user_id=1 AND command LIKE \'%|%\'"
+        ).fetchall()
+        best = 0
+        for r in rows:
+            best = max(best, len([p for p in r["command"].split("|") if p.strip()]))
+        return best
 
     def _evaluate_trigger(self, trigger: str, stats: dict, earned: set) -> bool:
         """Evaluate a simple trigger expression safely without eval()."""
@@ -448,19 +621,45 @@ class DataManager:
             parts = trigger.split(" or ")
             return any(self._evaluate_trigger(p.strip(), stats, earned) for p in parts)
 
-        # Handle special boolean triggers
+        # Track id -> the trigger name used in achievements.json. Every track
+        # in lessons.json must appear here or its achievement is unreachable.
+        track_triggers = {
+            "track_grep_complete":       "linux_fundamentals",
+            "track_awk_complete":        "text_processing",
+            "track_regex_complete":      "regex_academy",
+            "track_pipelines_complete":  "shell_pipelines",
+            "track_logs_complete":       "log_analysis",
+            "track_vlsi_complete":       "vlsi_track",
+            "track_scripting_complete":  "shell_scripting",
+            "track_filesystem_complete": "file_system",
+            "track_process_complete":    "process_management",
+            "track_networking_complete": "networking",
+            "track_git_complete":        "git_basics",
+            "track_useradmin_complete":  "user_admin",
+            "track_textadv_complete":    "text_advanced",
+            "track_dataanalysis_complete": "data_analysis",
+        }
+        if trigger in track_triggers:
+            return track_triggers[trigger] in stats.get("tracks_completed", [])
+
+        # Handle special boolean triggers. None of these may be a bare True:
+        # a trigger that is always satisfied fires on the first XP award and
+        # hands out the achievement for nothing.
         boolean_triggers = {
-            "track_grep_complete":       lambda s, e: "linux_fundamentals" in s.get("tracks_completed", []),
-            "track_awk_complete":        lambda s, e: "text_processing" in s.get("tracks_completed", []),
-            "track_regex_complete":      lambda s, e: "regex_academy" in s.get("tracks_completed", []),
-            "track_vlsi_complete":       lambda s, e: "vlsi_track" in s.get("tracks_completed", []),
-            "quiz_perfect_nohint":       lambda s, e: s.get("quiz_correct", 0) > 0 and s.get("challenges_nohint", 0) > 0,
-            "challenge_fast":            lambda s, e: True,  # Awarded inline by ProgressEngine
-            "pipeline_5_commands":       lambda s, e: True,  # Awarded inline
-            "all_missions_complete":     lambda s, e: s.get("missions_completed", 0) >= 6,
-            "portfolio_generated":       lambda s, e: True,  # Awarded inline
-            "lesson_before_8am":         lambda s, e: 0 <= s.get("current_hour", 12) < 8,
-            "lesson_after_midnight":     lambda s, e: 0 <= s.get("current_hour", 12) < 5,
+            # A perfect quiz run, taken without hints.
+            "quiz_perfect_nohint":   lambda s, e: (
+                s.get("quizzes_taken", 0) >= 5
+                and s.get("quiz_correct", 0) == s.get("quizzes_taken", 0)
+            ),
+            # Solved a challenge in under two minutes.
+            "challenge_fast":        lambda s, e: 0 < s.get("fastest_solve", 0) < 120,
+            # Built a pipeline of at least five stages.
+            "pipeline_5_commands":   lambda s, e: s.get("longest_pipeline", 0) >= 5,
+            "all_missions_complete": lambda s, e: s.get("missions_completed", 0) >= 10,
+            "portfolio_generated":   lambda s, e: bool(s.get("portfolio_generated", False)),
+            "all_tracks_complete":   lambda s, e: s.get("tracks_completed_count", 0) >= 14,
+            "lesson_before_8am":     lambda s, e: 0 <= s.get("current_hour", 12) < 8,
+            "lesson_after_midnight": lambda s, e: 0 <= s.get("current_hour", 12) < 5,
         }
         if trigger in boolean_triggers:
             return boolean_triggers[trigger](stats, earned)
@@ -625,12 +824,44 @@ class DataManager:
         if qp > 0:
             accuracy = (qc / qp) * 100
 
+        # Weekly activity (last 7 days)
+        weekly_activity = self.conn.execute("""
+            SELECT DATE(executed_at) as day, COUNT(*) as n
+            FROM command_history WHERE user_id=1
+            AND executed_at >= datetime('now', '-7 days')
+            GROUP BY day ORDER BY day
+        """).fetchall()
+
+        # Challenge performance by difficulty
+        ch_by_diff = self.conn.execute("""
+            SELECT 
+                CASE 
+                    WHEN challenge_id IN (SELECT challenge_id FROM challenge_history WHERE user_id=1 AND solved=1) THEN 'solved'
+                    ELSE 'attempted'
+                END as status,
+                COUNT(*) as n
+            FROM challenge_history WHERE user_id=1
+            GROUP BY status
+        """).fetchall()
+
+        # Average solve time
+        avg_time = self.conn.execute("""
+            SELECT AVG(best_time) as avg_time, MIN(best_time) as best_time
+            FROM challenge_history WHERE user_id=1 AND solved=1 AND best_time > 0
+        """).fetchone()
+
         return {
             "user": dict(user),
             "progress": dict(progress),
             "accuracy": accuracy,
             "top_commands": [dict(r) for r in top_cmds],
             "lessons_per_track": [dict(r) for r in per_track],
+            "weekly_activity": [dict(r) for r in weekly_activity],
+            "challenge_stats": {
+                "solved": sum(1 for r in ch_by_diff if r["status"] == "solved"),
+                "attempted": sum(1 for r in ch_by_diff if r["status"] == "attempted"),
+            },
+            "avg_solve_time": dict(avg_time) if avg_time else {"avg_time": 0, "best_time": 0},
         }
 
     # ── Settings ─────────────────────────────────────────────
@@ -658,6 +889,118 @@ class DataManager:
         if correct:
             self.increment_progress(quiz_correct=1)
 
+    # ── Bookmarks ─────────────────────────────────────────────
+
+    def toggle_bookmark(self, lesson_id: str) -> bool:
+        """Toggle bookmark for a lesson. Returns True if now bookmarked."""
+        existing = self.conn.execute(
+            "SELECT id FROM bookmarks WHERE user_id=1 AND lesson_id=?",
+            (lesson_id,)
+        ).fetchone()
+        if existing:
+            self.conn.execute(
+                "DELETE FROM bookmarks WHERE id=?", (existing["id"],)
+            )
+            self.conn.commit()
+            return False
+        self.conn.execute(
+            "INSERT OR IGNORE INTO bookmarks (user_id, lesson_id) VALUES (1,?)",
+            (lesson_id,)
+        )
+        self.conn.commit()
+        return True
+
+    def is_bookmarked(self, lesson_id: str) -> bool:
+        row = self.conn.execute(
+            "SELECT 1 FROM bookmarks WHERE user_id=1 AND lesson_id=?",
+            (lesson_id,)
+        ).fetchone()
+        return row is not None
+
+    def get_bookmarked_lessons(self) -> set[str]:
+        rows = self.conn.execute(
+            "SELECT lesson_id FROM bookmarks WHERE user_id=1"
+        ).fetchall()
+        return {row["lesson_id"] for row in rows}
+
+    # ── Certificates ─────────────────────────────────────────
+
+    def issue_certificate(self, lesson_id: str, track_id: str, score: int) -> int:
+        """Issue a certificate for lesson completion. Returns cert ID."""
+        cur = self.conn.execute(
+            "INSERT INTO certificates (user_id, lesson_id, track_id, score) VALUES (1,?,?,?)",
+            (lesson_id, track_id, score)
+        )
+        self.conn.commit()
+        return cur.lastrowid
+
+    def get_certificates(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM certificates WHERE user_id=1 ORDER BY issued_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def has_certificate(self, lesson_id: str) -> bool:
+        row = self.conn.execute(
+            "SELECT 1 FROM certificates WHERE user_id=1 AND lesson_id=?",
+            (lesson_id,)
+        ).fetchone()
+        return row is not None
+
+    # ── Lesson Bookmark (resume position) ────────────────────
+
+    def save_lesson_position(self, lesson_id: str, section: int,
+                             track_id: str = "") -> None:
+        """Save current section for resume.
+
+        Inserts a placeholder history row when the lesson has never been
+        completed — otherwise there is nothing to UPDATE and the position is
+        silently dropped.
+        """
+        cur = self.conn.execute("""
+            UPDATE lesson_history SET current_section=?
+            WHERE user_id=1 AND lesson_id=?
+        """, (section, lesson_id))
+        if cur.rowcount == 0:
+            self.conn.execute("""
+                INSERT INTO lesson_history
+                    (user_id, lesson_id, track_id, completed, current_section, attempts)
+                VALUES (1,?,?,0,?,0)
+            """, (lesson_id, track_id, section))
+        self.conn.commit()
+
+    def get_lesson_position(self, lesson_id: str) -> int:
+        """Get saved section for resume."""
+        row = self.conn.execute(
+            "SELECT current_section FROM lesson_history WHERE user_id=1 AND lesson_id=?",
+            (lesson_id,)
+        ).fetchone()
+        if row and row["current_section"]:
+            return row["current_section"]
+        return 0
+
+    def get_challenge_streak(self) -> int:
+        user = self.get_user()
+        return user.get("challenge_streak", 0)
+
+    def increment_challenge_streak(self) -> int:
+        user = self.get_user()
+        streak = user.get("challenge_streak", 0) + 1
+        self.update_user(challenge_streak=streak)
+        return streak
+
+    def reset_challenge_streak(self) -> None:
+        self.update_user(challenge_streak=0)
+
+    def get_recent_challenge_history(self, limit: int = 20) -> list[dict]:
+        """Get recent challenge attempts."""
+        rows = self.conn.execute("""
+            SELECT challenge_id, solved, hints_used, best_time, xp_earned
+            FROM challenge_history WHERE user_id=1
+            ORDER BY id DESC LIMIT ?
+        """, (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
     def reset_all_progress(self) -> None:
         """Reset all user progress, achievements, and history. Preserves theme and settings."""
         user = self.get_user()
@@ -670,10 +1013,16 @@ class DataManager:
             DELETE FROM achievements;
             DELETE FROM command_history;
             DELETE FROM sessions;
-            UPDATE user SET xp=0, level=1, rank_title='Terminal Novice', streak=0;
+            DELETE FROM bookmarks;
+            DELETE FROM certificates;
+            UPDATE user SET xp=0, level=1, rank_title='Terminal Novice', streak=0,
+                challenge_streak=0, last_active=NULL;
             UPDATE progress SET lessons_completed=0, challenges_solved=0,
                 missions_completed=0, quizzes_taken=0, quiz_correct=0,
-                commands_executed=0, time_spent_mins=0, tracks_completed='[]';
+                commands_executed=0, time_spent_mins=0, challenges_nohint=0,
+                tracks_completed='[]';
         """)
         self.update_user(theme=theme, settings=settings)
         self.conn.commit()
+        # Personal notes are deliberately preserved; only progress is reset.
+        self.set_setting("portfolio_generated", False)

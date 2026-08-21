@@ -1,1310 +1,940 @@
+<div align="center">
+
 # ShellMentor
 
-A professional-grade, interactive terminal-based learning platform for mastering Linux command-line proficiency through structured lessons, practical challenges, and gamified progression tracking.
+**Learn the Linux command line by writing real commands — without ever running one.**
 
-## Table of Contents
+A terminal-native learning platform that teaches `grep`, `sed`, `awk`, pipelines and log
+forensics through structured lessons, scored challenges, and multi-stage missions.
+Your commands are validated against reference solutions, never executed against your system.
 
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [System Requirements](#system-requirements)
-- [Installation](#installation)
-- [Quick Start Guide](#quick-start-guide)
-- [Architecture and Design](#architecture-and-design)
-- [Module Documentation](#module-documentation)
-- [Learning Curriculum](#learning-curriculum)
-- [Configuration](#configuration)
-- [Advanced Usage](#advanced-usage)
-- [API Reference](#api-reference)
-- [Project Roadmap](#project-roadmap)
-- [License](#license)
-- [Support](#support)
+[![CI](https://github.com/bitWithKunal/ShellMentor/actions/workflows/ci.yml/badge.svg)](https://github.com/bitWithKunal/ShellMentor/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Textual](https://img.shields.io/badge/TUI-Textual-5A5AFF)](https://github.com/Textualize/textual)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-4.4.0-blue.svg)](CHANGELOG.md)
+[![Zero subprocess](https://img.shields.io/badge/subprocess%20calls-0-brightgreen.svg)](#why-nothing-executes)
+
+**43 lessons · 14 tracks · 50 challenges · 10 missions · 31 achievements · 12 ranks · 7 themes**
+
+</div>
 
 ---
 
-## Overview
+## Table of Contents
 
-ShellMentor is an enterprise-ready, terminal-based educational platform designed to facilitate comprehensive Linux command-line skill development. Built with Python 3.10+ and powered by the Textual framework, ShellMentor provides an immersive learning environment that combines structured curriculum delivery with gamification mechanics to maintain user engagement and track progress systematically.
+- [What ShellMentor Is](#what-shellmentor-is)
+- [Why Nothing Executes](#why-nothing-executes)
+- [Screenshots](#screenshots)
+- [Quick Start](#quick-start)
+- [The Eight Modules](#the-eight-modules)
+- [Curriculum](#curriculum)
+- [Progression System](#progression-system)
+- [Keyboard Reference](#keyboard-reference)
+- [Architecture](#architecture)
+- [Data & Storage](#data--storage)
+- [Authoring Your Own Content](#authoring-your-own-content)
+- [Programmatic API](#programmatic-api)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Roadmap](#roadmap)
+- [License & Credits](#license--credits)
 
-The platform serves multiple user personas: from novice system administrators learning fundamental command syntax, to experienced DevOps engineers refining their shell scripting proficiency, to VLSI professionals integrating command-line workflows into their technical domain.
+---
 
-### Target Audience
+## What ShellMentor Is
 
-- Linux system administrators and DevOps engineers
-- Software developers seeking shell scripting mastery
-- System performance analysts and site reliability engineers
-- VLSI and EDA professionals requiring specialized command-line workflows
-- Educational institutions delivering Linux fundamentals courses
-- Self-directed learners pursuing command-line proficiency
+Most command-line tutorials are either passive reading or a live shell that punishes
+mistakes. ShellMentor sits deliberately in between: you are given a **real dataset**, a
+**real objective**, and a blank prompt — and your answer is graded on whether the
+*command you wrote* is correct.
 
-### Core Value Proposition
+```
+Objective:  Extract every unique IP address that returned a 500 error
+Dataset:    workspace/nginx.log  (9.6 KB, 101 lines)
 
-ShellMentor eliminates the fragmentation of Linux learning by providing an integrated ecosystem that combines:
+> awk '$9 == 500 {print $1}' nginx.log | sort -u
+  ✓ Correct — matched reference solution        +250 XP   Level 3 → 4
+```
 
-1. Structured, progressive lesson material
-2. Practical, hands-on exercise environments
-3. Challenge-based skill validation
-4. Comprehensive progress tracking and analytics
-5. Achievement-based motivation and gamification
-6. Persistent user state and learning history
+**Who it's for**
+
+| Audience | What they get out of it |
+|---|---|
+| Linux beginners | A safe path from `ls` to pipelines with no risk of breaking anything |
+| DevOps / SRE | Log-forensics drills on real Apache, nginx, and syslog captures |
+| Data analysts | CSV wrangling with `cut`, `awk`, `sort`, `join` on realistic HR and sales data |
+| VLSI / EDA engineers | A dedicated track over `.lib`, `.sdc`, timing reports, and synthesis logs |
+| Instructors | 43 authored lessons with quizzes and exercises, offline and self-hosted |
+
+---
+
+## Why Nothing Executes
+
+This is the core design decision, not a limitation.
+
+> ShellMentor contains **zero** calls to `subprocess`, `os.system`, `eval`, or `exec`.
+> Nothing you type is ever handed to a shell.
+
+```bash
+# Verify it yourself:
+grep -rn 'subprocess\|os\.system\|eval(\|exec(' --include='*.py' .
+# (no results)
+```
+
+Submissions are validated structurally — a `pattern_match` check against the
+challenge's reference solution (42 of 50 challenges), or a `line_count` assertion
+(the remaining 8). That buys four things:
+
+1. **Safety** — `rm -rf`, fork bombs, and `curl | sh` are inert text. Run it on a
+   production jump host without a second thought.
+2. **Portability** — grading does not depend on your GNU/BSD flavour, locale, or
+   whether `rg` happens to be installed.
+3. **Determinism** — the same answer always scores the same way, so progress and
+   analytics actually mean something.
+4. **Teaching leverage** — feedback targets *the command you wrote*, not just its
+   output, so a right answer for the wrong reason gets caught.
+
+The trade-off is honest and stated up front: ShellMentor teaches you to **compose**
+commands correctly. Muscle memory for a live TTY still comes from a live TTY.
 
 ---
 
 ## Screenshots
 
-> All screenshots are taken from ShellMentor v4.1.0 running on Linux.
+> Captured from ShellMentor v4.4.0 on Linux.
 
-### Lessons — Structured Curriculum Delivery
+<table>
+<tr>
+<td width="50%">
 
-Interactive lesson content with syntax-highlighted examples and inline command walkthroughs.
+**Lessons** — structured curriculum with syntax-highlighted walkthroughs
 
-![Lessons - Regex Pattern Mastery](screenshots/2.png)
+![Lessons](screenshots/2.png)
 
----
+</td>
+<td width="50%">
 
-### Playground — Live Command Practice Environment
+**Command Lab** — workspace files, templates, and structural feedback
 
-Workspace files, real datasets, and a pipeline-ready terminal for hands-on experimentation.
+![Command Lab](screenshots/3.png)
 
-![Playground - Command Execution Environment](screenshots/3.png)
+</td>
+</tr>
+<tr>
+<td width="50%">
 
----
+**Challenges** — 50 scored exercises across five difficulty tiers
 
-### Challenges — Skill Validation Exercises
+![Challenges](screenshots/4.png)
 
-Browse and launch scored challenges across difficulty tiers, each mapped to real-world scenarios.
+</td>
+<td width="50%">
 
-![Challenges - IP Extractor](screenshots/4.png)
+**Missions** — multi-stage, role-framed workflows
 
----
+![Missions](screenshots/6.png)
 
-### Missions — Multi-Stage Learning Objectives
+</td>
+</tr>
+<tr>
+<td width="50%">
 
-Complex, narrative-framed missions that chain multiple skills into cohesive workflows.
+**Achievements** — 31 badges across five rarity tiers
 
-![Missions - Security Analyst](screenshots/6.png)
+![Achievements](screenshots/7.png)
 
----
+</td>
+<td width="50%">
 
-### Achievements — Gamification & Badges
+**Notes** — searchable in-app knowledge repository
 
-Tiered achievement system (Legendary, Rare, Uncommon, Common) with XP rewards and unlock criteria.
+![Notes](screenshots/8.png)
 
-![Achievements Dashboard](screenshots/7.png)
+</td>
+</tr>
+<tr>
+<td width="50%">
 
----
+**Analytics** — difficulty breakdowns and command frequency
 
-### Notes — Personal Knowledge Repository
+![Analytics](screenshots/10.png)
 
-In-app notepad with search, save, and export functionality for capturing command learnings.
+</td>
+<td width="50%">
 
-![Notes Module](screenshots/8.png)
+**Settings** — profile, theme selection, and dependency scan
 
----
+![Settings](screenshots/12.png)
 
-### Analytics — Learning Statistics Dashboard
-
-Progress breakdowns by challenge difficulty, most-used commands, and lessons per track.
-
-![Analytics Dashboard](screenshots/10.png)
-
----
-
-### Settings — Profile & Theme Configuration
-
-Username management, theme selection (Dracula, and more), and application settings.
-
-![Settings - Configure ShellMentor](screenshots/12.png)
-
----
-
-## Key Features
-
-### Interactive Learning Environment
-
-ShellMentor implements a multi-modal learning experience designed for knowledge retention and practical skill development:
-
-- **Structured Lessons**: Sequenced learning modules that build conceptual understanding from fundamentals to advanced topics
-- **Progressive Pathways**: Adaptive learning tracks that adjust complexity based on user proficiency assessment
-- **Guided Exercises**: Step-by-step command demonstrations with real-time feedback
-- **Contextual Examples**: Domain-specific use cases including VLSI workflows, data analysis, and system administration scenarios
-- **Integrated Documentation**: Searchable reference material embedded within the application
-
-### Command Practice Environment
-
-The dedicated practice environment provides users with realistic scenarios and datasets for command experimentation:
-
-- **Sandbox Execution**: Isolated command execution preventing unintended system modifications
-- **Real Datasets**: Production-grade sample datasets including CSV files, configuration files, and engineering documents
-- **Pipeline Experimentation**: Safe environment for constructing and testing complex command pipelines
-- **Output Visualization**: Rich terminal output rendering with syntax highlighting and formatting
-
-### Skill Validation Through Challenges
-
-Challenges implement scenario-based problem-solving to validate acquired skills:
-
-- **Real-World Scenarios**: Challenge problems derived from actual system administration and data processing tasks
-- **Progressive Difficulty**: Challenge ranking from beginner to expert levels with clearly defined success criteria
-- **Instant Feedback**: Automated validation of command outputs against expected results
-- **Solution Analytics**: Detailed performance metrics and alternative solution paths
-
-### Mission-Based Learning
-
-Missions aggregate multiple skills into cohesive learning objectives:
-
-- **Multi-Step Workflows**: Complex tasks requiring integration of multiple command-line concepts
-- **Narrative Context**: Mission scenarios presented with meaningful narrative framing
-- **State Persistence**: Mission progress saved with ability to resume from checkpoints
-- **Reward Integration**: Direct connection between mission completion and achievement system
-
-### Comprehensive Progress Tracking
-
-ShellMentor implements sophisticated progress tracking mechanisms:
-
-- **Experience Point System**: Quantified skill progression through XP accumulation
-- **Leveling System**: Milestone-based advancement with associated achievements and unlocks
-- **Learning Analytics**: Detailed statistics on lesson completion, challenge success rates, and time investment
-- **Streak Tracking**: Consecutive daily engagement metrics to encourage consistent learning habits
-- **Achievement Repository**: Categorized accomplishments with descriptive narratives and difficulty classifications
-
-### Gamification Framework
-
-Intrinsic motivation mechanics drive long-term user engagement:
-
-- **Achievement Unlocking**: Milestone-based rewards for specific accomplishments
-- **Leaderboard Integration**: Optional community-facing progress comparison
-- **Skill Badges**: Visual representation of acquired competencies
-- **Challenge Progressions**: Ranked challenges with increasing difficulty and reward
-- **Daily Streaks**: Engagement tracking with notifications for consistency rewards
-
-### Multi-Platform Learning Modes
-
-ShellMentor provides specialized learning environments for different objectives:
-
-- **Lessons Module**: Structured curriculum delivery with comprehension checkpoints
-- **Playground Module**: Freeform command execution and pipeline experimentation
-- **Challenges Module**: Scored problem-solving exercises with success validation
-- **Missions Module**: Complex, narrative-driven learning objectives
-- **Analytics Dashboard**: Comprehensive progress visualization and performance metrics
+</td>
+</tr>
+</table>
 
 ---
 
-## System Requirements
+## Quick Start
 
-### Operating System Compatibility
+### Requirements
 
-| Operating System | Status | Notes |
-|------------------|--------|-------|
-| Linux (Ubuntu) | Fully Supported | Primary development and testing target |
-| Linux (Debian) | Fully Supported | Compatible with tested configuration |
-| Linux (Fedora) | Fully Supported | Compatible with tested configuration |
-| Linux (Mint) | Fully Supported | Compatible with tested configuration |
-| Linux (Generic) | Supported | Requires POSIX-compliant shell |
-| macOS | Partial Support | Requires additional configuration |
-| Windows 11 (WSL2) | Partial Support | Windows Subsystem for Linux required |
+| | Minimum | Notes |
+|---|---|---|
+| Python | 3.10+ | Enforced at startup; 3.10–3.13 covered by CI |
+| Terminal | 24-bit colour, 80×24 | 120×32 or larger strongly recommended |
+| OS | Linux, macOS, WSL2 | Native Windows console is unsupported |
+| Disk | ~15 MB | Plus a small SQLite database in your user data directory |
 
-### Software Dependencies
-
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| Python | 3.10+ | Core runtime environment |
-| pip | 21.0+ | Package management |
-| Terminal Emulator | Modern | Rich TUI rendering |
-| Git | 2.0+ | Version control integration |
-
-### Hardware Recommendations
-
-| Specification | Minimum | Recommended |
-|--------------|---------|------------|
-| CPU | Single Core | Dual Core |
-| RAM | 512 MB | 2 GB |
-| Storage | 500 MB | 2 GB |
-| Terminal Width | 80 columns | 120+ columns |
-| Terminal Height | 24 rows | 30+ rows |
-
-### Dependency Specifications
+Dependencies are pinned with deliberate upper bounds — Textual has changed both its
+markup parser and `Screen` internals across majors, and both breakages reached users:
 
 ```
-Python 3.10+
-textual>=0.30.0          # Rich terminal UI framework
-rich>=13.0.0             # Terminal formatting and rendering
-pyyaml>=6.0              # Configuration file parsing
-click>=8.1.0             # Command-line interface library
+textual >=1.0,<9     rich >=13.7,<16     pyyaml >=6.0.1,<7     platformdirs >=4.2.0,<5
 ```
 
----
+### Install
 
-## Installation
+<details open>
+<summary><b>Option A — launcher script (recommended)</b></summary>
 
-### Prerequisites Verification
-
-Before beginning installation, verify system compatibility:
-
-```bash
-# Check Python version
-python3 --version
-# Expected: Python 3.10 or higher
-
-# Check pip availability
-pip3 --version
-# Expected: pip 21.0 or higher
-
-# Verify git installation
-git --version
-# Expected: git 2.0 or higher
-```
-
-### Standard Installation (Recommended)
-
-Follow this procedure for standard development installation:
-
-#### Step 1: Clone Repository
+Creates the virtual environment, installs dependencies, and launches in one step.
 
 ```bash
 git clone https://github.com/bitWithKunal/ShellMentor.git
 cd ShellMentor
-```
-
-#### Step 2: Create Isolated Python Environment
-
-```bash
-# Create virtual environment
-python3 -m venv .venv
-
-# Activate virtual environment
-# On Linux/macOS:
-source .venv/bin/activate
-
-# On Windows (WSL2):
-source .venv/bin/activate
-```
-
-#### Step 3: Install Dependencies
-
-```bash
-# Upgrade pip, setuptools, wheel
-pip install --upgrade pip setuptools wheel
-
-# Install project dependencies
-pip install -r requirements.txt
-```
-
-#### Step 4: Launch Application
-
-```bash
-# Start ShellMentor
-python main.py
-```
-
-### Alternative: Using Installation Script
-
-For convenience, an automated launcher script is provided:
-
-```bash
-# Make script executable
 chmod +x shellmentor.sh
-
-# Execute launcher
 ./shellmentor.sh
 ```
 
-### Docker Installation (Optional)
+| Flag | Effect |
+|---|---|
+| `--install-only`, `-i` | Install dependencies and shell integration, then exit |
+| `--update`, `-u` | Upgrade `textual`, `rich`, `pyyaml`, `platformdirs` |
+| `--dev`, `-d` | Launch with system Python, skipping the virtual environment |
+| `--version`, `-v` | Print version information |
+| `--help`, `-h` | Show usage |
 
-For containerized deployment:
+</details>
 
-```bash
-# Build Docker image
-docker build -t shellmentor:latest .
-
-# Run in container
-docker run -it --rm shellmentor:latest python main.py
-```
-
-### Verification Installation
-
-After installation, verify correct operation:
+<details>
+<summary><b>Option B — manual virtual environment</b></summary>
 
 ```bash
-# Check dependencies are loaded
-python -c "import textual; import rich; print('OK')"
-
-# Launch help
-python main.py --help
-```
-
----
-
-## Quick Start Guide
-
-### First Launch
-
-Upon first execution, ShellMentor performs initial setup:
-
-```bash
+git clone https://github.com/bitWithKunal/ShellMentor.git
 cd ShellMentor
-source .venv/bin/activate
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows/WSL2: source .venv/Scripts/activate
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+
 python main.py
 ```
 
-Expected first-run sequence:
+</details>
 
-1. Environment scan displays system information
-2. Dashboard initializes with welcome message
-3. Tutorial prompt appears for first-time users
-4. Command palette available via Ctrl+P
-
-### Primary Navigation
-
-The application implements a command palette for rapid navigation:
-
-| Keyboard Shortcut | Action | Description |
-|-------------------|--------|-------------|
-| Ctrl+P | Command Palette | Open searchable command menu |
-| Ctrl+D | Dashboard | Return to main dashboard |
-| Ctrl+L | Lessons | Navigate to lesson module |
-| Ctrl+G | Playground | Open command practice environment |
-| Ctrl+H | Challenges | Access challenge problems |
-| Ctrl+M | Missions | Open mission learning sequences |
-| Ctrl+A | Achievements | View achievement repository |
-| Ctrl+N | Notes | Access personal notes |
-| Ctrl+R | Analytics | Display progress analytics |
-| Ctrl+S | Settings | Open application settings |
-| Ctrl+Q | Quit | Exit application |
-
-### Essential First Steps
-
-1. **Review Dashboard**: Understand current progress and available modules
-2. **Start Lesson 1**: Begin structured curriculum from fundamentals
-3. **Try Playground**: Experiment with basic commands in safe environment
-4. **Complete First Challenge**: Validate understanding with problem solving
-5. **Check Analytics**: Review progress and identify areas for focus
-
----
-
-## Architecture and Design
-
-### High-Level System Architecture
-
-```
-ShellMentor Application Architecture
-====================================
-
-┌─────────────────────────────────────────────────────┐
-│                  User Interface Layer               │
-│         (Textual TUI Framework - ui.py)            │
-├─────────────────────────────────────────────────────┤
-│  Dashboard | Lessons | Playground | Challenges     │
-│  Missions  | Analytics | Settings | Achievements   │
-├─────────────────────────────────────────────────────┤
-│              Business Logic Layer                   │
-├─────────────────────────────────────────────────────┤
-│  LearningEngine | ChallengeEngine | PlaygroundEngine│
-│  ProgressEngine | MissionEngine   | AchievementEngine
-├─────────────────────────────────────────────────────┤
-│              Data Persistence Layer                 │
-│          (DataManager - data_manager.py)            │
-├─────────────────────────────────────────────────────┤
-│  JSON File Storage | User Progress | Configuration │
-├─────────────────────────────────────────────────────┤
-│            Integration Layer                        │
-├─────────────────────────────────────────────────────┤
-│  System Command Execution | Sandbox  │
-└─────────────────────────────────────────────────────┘
-```
-
-### Module Responsibilities
-
-ShellMentor implements a modular architecture with well-defined separation of concerns:
-
-#### main.py - Application Entry Point
-- Application initialization and bootstrap
-- Global keyboard binding configuration
-- Screen stack management
-- Event-driven architecture coordination
-- Graceful shutdown handling
-
-#### ui.py - User Interface Layers
-- Textual screen implementations for all modules
-- Rich TUI component rendering
-- Modal and dialog implementations
-- Input validation and user feedback
-- Responsive layout management
-
-#### data_manager.py - Data Persistence
-- JSON file-based data storage
-- User progress serialization
-- Configuration management
-- Atomic file write operations
-- Data validation and integrity checking
-
-#### learning.py - Curriculum Engine
-- Lesson content loading and sequencing
-- Progress state management per lesson
-- Comprehension checkpoint validation
-- Learning path progression logic
-
-#### challenge.py - Challenge Validation Engine
-- Challenge specification parsing
-- Command execution and validation
-- Output comparison algorithms
-- Success criteria evaluation
-- Solution history tracking
-
-#### playground.py - Practice Environment
-- Isolated command execution environment
-- Real-time output rendering
-- Pipeline construction support
-- History and session management
-- Dataset reference provision
-
-#### progress.py - Gamification Framework
-- Experience point calculation and tracking
-- Level and milestone progression
-- Achievement unlock logic
-- Streak calculation and maintenance
-- Analytics aggregation and reporting
-
-#### utils.py - Shared Utilities
-- System detection and configuration
-- File path resolution
-- Data formatting and conversion
-- Environment variable handling
-- Logging and debugging utilities
-
-#### utils.py - Shared Utilities
-
-#### User Progress Entity
-
-```json
-{
-  "user_id": "uuid",
-  "username": "string",
-  "level": "integer",
-  "total_xp": "integer",
-  "current_xp": "integer",
-  "streak_days": "integer",
-  "last_activity": "timestamp",
-  "lessons_completed": ["lesson_id"],
-  "challenges_completed": ["challenge_id"],
-  "achievements_unlocked": ["achievement_id"],
-  "notes": ["note_object"]
-}
-```
-
-#### Challenge Entity
-
-```json
-{
-  "id": "string",
-  "title": "string",
-  "description": "string",
-  "difficulty": "beginner|intermediate|advanced",
-  "topic": "string",
-  "setup_commands": ["string"],
-  "test_command": "string",
-  "expected_output": "string",
-  "hints": ["string"],
-  "xp_reward": "integer"
-}
-```
-
-#### Achievement Entity
-
-```json
-{
-  "id": "string",
-  "title": "string",
-  "description": "string",
-  "category": "string",
-  "unlock_condition": "string",
-  "rarity": "common|uncommon|rare|epic|legendary"
-}
-```
-
----
-
-## Module Documentation
-
-### LearningEngine
-
-The LearningEngine manages structured curriculum delivery and progress tracking through lessons.
-
-#### Core Methods
-
-```python
-def load_lesson(lesson_id: str) -> Lesson:
-    """Load lesson content and metadata from data store."""
-
-def get_current_progress(user_id: str) -> LessonProgress:
-    """Retrieve current user progress for active lesson."""
-
-def advance_lesson(user_id: str, lesson_id: str) -> bool:
-    """Mark lesson as completed and advance progression."""
-
-def get_lesson_list() -> list[Lesson]:
-    """Return all available lessons ordered by sequence."""
-```
-
-#### Usage Example
-
-```python
-learning_engine = LearningEngine(data_manager)
-lesson = learning_engine.load_lesson("lesson_001")
-progress = learning_engine.get_current_progress(user_id)
-completed = learning_engine.advance_lesson(user_id, "lesson_001")
-```
-
-### ChallengeEngine
-
-The ChallengeEngine validates command execution against challenge success criteria.
-
-#### Core Methods
-
-```python
-def get_challenge(challenge_id: str) -> Challenge:
-    """Retrieve challenge specification and metadata."""
-
-def validate_solution(challenge_id: str, user_command: str) -> ValidationResult:
-    """Execute user command and validate against expected output."""
-
-def get_hint(challenge_id: str) -> str:
-    """Retrieve next hint for challenge."""
-
-def submit_solution(user_id: str, challenge_id: str) -> SolutionResult:
-    """Submit solution and process completion."""
-```
-
-#### Usage Example
-
-```python
-challenge_engine = ChallengeEngine(data_manager)
-challenge = challenge_engine.get_challenge("challenge_005")
-result = challenge_engine.validate_solution("challenge_005", "grep 'pattern' file.txt")
-if result.success:
-    challenge_engine.submit_solution(user_id, "challenge_005")
-```
-
-### PlaygroundEngine
-
-The PlaygroundEngine provides an isolated environment for command experimentation.
-
-#### Core Methods
-
-```python
-def execute_command(command: str) -> ExecutionResult:
-    """Execute command in isolated sandbox environment."""
-
-def get_available_datasets() -> list[Dataset]:
-    """Return list of available practice datasets."""
-
-def get_command_history(limit: int = 50) -> list[CommandHistory]:
-    """Retrieve historical command execution."""
-
-def clear_environment() -> None:
-    """Reset playground state to initial configuration."""
-```
-
-#### Usage Example
-
-```python
-playground_engine = PlaygroundEngine(data_manager)
-result = playground_engine.execute_command("ls -la")
-datasets = playground_engine.get_available_datasets()
-history = playground_engine.get_command_history(limit=20)
-```
-
-### ProgressEngine
-
-The ProgressEngine manages XP accumulation, achievement unlocking, and gamification metrics.
-
-#### Core Methods
-
-```python
-def award_xp(user_id: str, xp_amount: int, source: str) -> None:
-    """Award experience points for user activity."""
-
-def check_level_up(user_id: str) -> LevelUpEvent | None:
-    """Verify level threshold achievement and return event if triggered."""
-
-def unlock_achievement(user_id: str, achievement_id: str) -> AchievementUnlockEvent:
-    """Unlock specified achievement for user."""
-
-def get_progress_summary(user_id: str) -> ProgressSummary:
-    """Return comprehensive progress statistics."""
-```
-
-#### Usage Example
-
-```python
-progress_engine = ProgressEngine(data_manager)
-progress_engine.award_xp(user_id, 100, source="challenge_completion")
-levelup = progress_engine.check_level_up(user_id)
-if levelup:
-    print(f"Level up to {levelup.new_level}")
-```
-
----
-
-## Learning Curriculum
-
-### Curriculum Structure
-
-ShellMentor implements a sequential, progressive curriculum designed for incremental skill building:
-
-#### Foundation Track (Lessons 1-10)
-
-**Objective**: Establish fundamental Linux command-line literacy
-
-1. **Lesson 1: Terminal Fundamentals**
-   - Terminal emulator overview
-   - Command syntax basics
-   - Shell prompt interpretation
-   - Input/output concepts
-   - Exit status codes
-
-2. **Lesson 2: File System Navigation**
-   - Directory structure understanding
-   - pwd, cd, ls commands
-   - Path concepts (absolute/relative)
-   - Hidden files and directories
-   - Current working directory
-
-3. **Lesson 3: File and Directory Operations**
-   - File creation and deletion
-   - Directory creation and removal
-   - cp, mv, rm operations
-   - File permissions overview
-   - Directory traversal
-
-4. **Lesson 4: File Viewing and Manipulation**
-   - cat, less, more commands
-   - File content display techniques
-   - Text file navigation
-   - Output redirection basics
-   - File comparison tools
-
-5. **Lesson 5: Permissions and Ownership**
-   - Permission model (rwx)
-   - Numeric and symbolic notation
-   - chmod operation
-   - chown and chgrp commands
-   - User and group concepts
-
-6. **Lesson 6: Process Management**
-   - Process listing and inspection
-   - ps command variations
-   - Process killing and signals
-   - Background and foreground execution
-   - Job control
-
-7. **Lesson 7: Shell Basics**
-   - Shell types and features
-   - Environment variables
-   - Shell expansion mechanisms
-   - Command substitution
-   - Quoting and escaping
-
-8. **Lesson 8: Basic Piping and Redirection**
-   - pipe (|) operator
-   - Input redirection (<)
-   - Output redirection (>, >>)
-   - Error stream redirection
-   - Stream combination
-
-9. **Lesson 9: Introduction to grep**
-   - grep command fundamentals
-   - Pattern matching basics
-   - Regular expression introduction
-   - grep options and flags
-   - Practical use cases
-
-10. **Lesson 10: Introduction to sed**
-    - Stream editor basics
-    - Substitution operations
-    - Address ranges
-    - sed flags and modifiers
-    - Practical text transformation
-
-#### Intermediate Track (Lessons 11-20)
-
-**Objective**: Develop practical proficiency in text processing and data manipulation
-
-11. **Lesson 11: Advanced grep**
-    - Extended regular expressions
-    - Context options
-    - Color output and formatting
-    - Performance considerations
-    - Complex pattern construction
-
-12. **Lesson 12: sed Deep Dive**
-    - Hold space and pattern space
-    - Advanced substitutions
-    - Multi-line operations
-    - Script files and batch operations
-    - Performance optimization
-
-13. **Lesson 13: awk Fundamentals**
-    - awk structure and flow
-    - Field processing and variables
-    - Patterns and actions
-    - Arithmetic and string operations
-    - Built-in functions
-
-14. **Lesson 14: awk Advanced Operations**
-    - Associative arrays
-    - User-defined functions
-    - Flow control constructs
-    - Regular expressions in awk
-    - Complex data processing
-
-15. **Lesson 15: sort and cut Commands**
-    - sort algorithm and options
-    - sort key specification
-    - cut field selection
-    - Delimiter handling
-    - Performance characteristics
-
-16. **Lesson 16: uniq and paste Operations**
-    - uniq filtering and counting
-    - paste command line combining
-    - Duplicate removal strategies
-    - Column operations
-    - Data merging techniques
-
-17. **Lesson 17: find Command Mastery**
-    - find syntax and predicates
-    - Name-based searching
-    - Type and permission filtering
-    - Time-based selection
-    - Action execution
-
-18. **Lesson 18: xargs and Command Construction**
-    - xargs syntax and options
-    - Input delimiter specification
-    - Command substitution alternatives
-    - Parallel execution
-    - Performance optimization
-
-19. **Lesson 19: Regular Expressions Deep Dive**
-    - Basic and extended syntax
-    - Character classes and ranges
-    - Quantifiers and anchors
-    - Grouping and alternation
-    - Backreferences and lookarounds
-
-20. **Lesson 20: Complex Pipeline Construction**
-    - Multi-stage pipeline design
-    - Data transformation workflows
-    - Performance considerations
-    - Debugging pipeline issues
-    - Real-world scenarios
-
-#### Advanced Track (Lessons 21+)
-
-**Objective**: Attain expert-level command-line proficiency
-
-21. **Lesson 21: Shell Scripting Fundamentals**
-    - Shebang and execution
-    - Variable declaration and scope
-    - Control flow structures
-    - Function definition and invocation
-    - Script debugging
-
-22. **Lesson 22: Advanced Shell Features**
-    - Conditional execution
-    - Loop constructs and patterns
-    - Array operations
-    - String manipulation
-    - Arithmetic operations
-
-23. **Lesson 23: Command-Line Data Analysis**
-    - Statistical calculations
-    - Data extraction and transformation
-    - Report generation
-    - Data validation
-    - CSV/TSV processing
-
-24. **Lesson 24: System Administration Workflows**
-    - Log file analysis
-    - User and group management
-    - System monitoring techniques
-    - Batch file operations
-    - Automation patterns
-
-25. **Lesson 25: VLSI and EDA Command-Line Workflows**
-    - Liberty file processing
-    - Netlist manipulation
-    - Timing report analysis
-    - Constraint file handling
-    - Engineering data integration
-
-### Challenge Progression
-
-Challenges are organized by topic and difficulty level:
-
-#### Beginner Challenges (1-10 XP)
-- Basic file operations
-- Simple grep patterns
-- Elementary sed substitutions
-- Directory navigation
-- Permission modifications
-
-#### Intermediate Challenges (10-25 XP)
-- Complex pipeline construction
-- awk data processing
-- Advanced sed operations
-- find command scenarios
-- Data extraction problems
-
-#### Advanced Challenges (25-50 XP)
-- Multi-stage data transformation
-- Real-world system administration tasks
-- Performance optimization problems
-- Engineering workflow scenarios
-- Integration testing exercises
-
-### Mission Framework
-
-Missions provide narrative-driven, multi-step learning objectives that integrate multiple concepts:
-
-#### Mission Types
-
-1. **Data Processing Missions**: Multi-stage data transformation workflows
-2. **System Administration Missions**: Real-world operational scenarios
-3. **Performance Analysis Missions**: Optimization and benchmarking tasks
-4. **Engineering Workflow Missions**: VLSI-specific integrated exercises
-
----
-
-## Configuration
-
-### Configuration Files
-
-ShellMentor uses YAML and JSON for configuration:
-
-#### themes.yaml - Visual Theming
-
-```yaml
-default_theme:
-  name: "Catppuccin"
-  colors:
-    background: "#0a0e14"
-    foreground: "#cdd6f4"
-    primary: "#89b4fa"
-    accent: "#f38ba8"
-    success: "#a6e3a1"
-    warning: "#f9e2af"
-    error: "#f38ba8"
-```
-
-#### config.json - Application Settings
-
-```json
-{
-  "application": {
-    "name": "ShellMentor",
-    "version": "1.0.0",
-    "debug": false
-  },
-  "learning": {
-    "autosave_interval": 30,
-    "checkpoint_enabled": true,
-    "hint_penalty": 10
-  },
-  "gamification": {
-    "xp_per_lesson": 50,
-    "xp_per_challenge": 100,
-    "xp_per_mission": 250,
-    "level_threshold": 1000
-  },
-  "execution": {
-    "command_timeout": 30,
-    "sandbox_enabled": true
-  }
-}
-```
-
-### Environment Variables
-
-ShellMentor respects standard environment variables:
+<details>
+<summary><b>Option C — install as a package</b></summary>
 
 ```bash
-# Logging configuration
-export SHELLMENTOR_LOG_LEVEL=INFO
-export SHELLMENTOR_LOG_FILE=~/.shellmentor.log
-
-# Feature flags
-export SHELLMENTOR_DEBUG=false
-
-# Data paths
-export SHELLMENTOR_DATA_DIR=~/.shellmentor/data
-
-# Theme configuration
-export SHELLMENTOR_THEME=catppuccin
+python -m pip install .
+python -m main
 ```
+
+Built with `hatchling`. The project uses a flat layout, so `pyproject.toml` lists
+wheel and sdist contents explicitly.
+
+</details>
+
+### Verify
+
+```bash
+python -m compileall -q .    # syntax across every module
+python -m pytest -q          # 12 tests, including headless UI smoke tests
+```
+
+The smoke suite mounts **every screen** through Textual's headless pilot. This exists
+because `compileall` alone cannot catch a `NameError` inside a screen body or a method
+that shadows a Textual internal — both of which shipped as crashes before v4.4.0.
+
+`main.py` takes no arguments; all options belong to `shellmentor.sh`.
+
+### First five minutes
+
+1. Launch — you land on the **Dashboard** with your rank, XP, and streak.
+2. `Ctrl+L` → **Lessons** → *Linux Fundamentals* → lesson 1. Work the inline exercises;
+   each one grants XP once.
+3. Finish the lesson quiz. Question rewards vary — they are not a flat rate.
+4. `Ctrl+G` → **Command Lab**. Pick a workspace file, preview it, try a template.
+5. `Ctrl+H` → **Challenges** → any *beginner* entry. Solving without a hint feeds the
+   hint-free counter behind several achievements.
 
 ---
 
-## Advanced Usage
+## The Eight Modules
 
-### Custom Lesson Creation
+| | Module | Shortcut | What it does |
+|---|---|---|---|
+| 📚 | **Lessons** | `Ctrl+L` | 43 lessons across 14 tracks — theory, syntax, worked sections, common mistakes, best practices, exercises, and a closing quiz. Position is saved, so you can resume mid-lesson. |
+| 🧪 | **Command Lab** | `Ctrl+G` | Free-form practice over 12 real workspace datasets. Autocomplete across 43 commands, pipeline templates, file previews, command history, session recording, and a diff viewer for comparing two attempts. |
+| 🎯 | **Challenges** | `Ctrl+H` | 50 scored exercises — beginner (11), intermediate (13), advanced (11), expert (9), master (6). Progressive hints, a first-attempt bonus, and a timer. Failed attempts are recorded, so analytics reflect reality. |
+| 🚀 | **Missions** | `Ctrl+M` | 10 role-framed scenarios of 4–5 stages each. Every stage is validated against its own reference solution before the next unlocks. |
+| 🏆 | **Achievements** | `Ctrl+A` | 31 badges — common (5), uncommon (9), rare (12), epic (1), legendary (4). Every badge evaluates a real condition against your stats. |
+| 📝 | **Notes** | `Ctrl+N` | Searchable personal notepad with export. Deliberately preserved across a progress reset. |
+| 📊 | **Analytics** | `Ctrl+R` | Solve rates by difficulty, most-used commands, lessons per track, session time, and difficulty suggestions derived from your attempt history. |
+| ⚙️ | **Settings** | `Ctrl+T` | Username, theme picker (7 themes), environment scan for optional CLI tools, portfolio export, and progress reset. |
 
-Create custom lessons by extending the lessons.json format:
+Plus **Git Space** (`Ctrl+U`) — a guided reference for `init`, `status`, `add`,
+`commit`, `push`, `pull`, and `log`, pointed at a repository path you choose. In keeping
+with the execution model, it *displays* the commands for you to run in your own terminal
+rather than running them.
 
-```json
-{
-  "id": "custom_001",
-  "title": "Custom Lesson Title",
-  "description": "Detailed lesson description",
-  "difficulty": "intermediate",
-  "prerequisites": ["lesson_010", "lesson_015"],
-  "content": {
-    "introduction": "Lesson introduction text",
-    "concepts": [
-      {
-        "title": "Concept Name",
-        "explanation": "Detailed explanation",
-        "examples": ["example 1", "example 2"]
-      }
-    ],
-    "exercises": [
-      {
-        "type": "guided",
-        "instruction": "Exercise instruction",
-        "command": "example_command",
-        "expected_output": "pattern"
-      }
-    ]
-  },
-  "xp_reward": 50
-}
+---
+
+## Curriculum
+
+### Tracks
+
+| # | Track | Lessons | Focus |
+|---|---|---|---|
+| 1 | 🐧 Linux Fundamentals | 4 | Navigation, file basics, the shell environment |
+| 2 | 📝 Text Processing Mastery | 3 | `grep`, `cut`, `tr`, `sort`, `uniq` |
+| 3 | 🔮 Regex Academy | 2 | BRE, ERE, capture groups, greedy vs lazy |
+| 4 | 🔗 Shell Pipelines | 3 | Composition, redirection, `tee`, `xargs` |
+| 5 | 📋 Log Analysis | 2 | Field extraction, frequency counts, time windows |
+| 6 | ⚡ VLSI Text Processing | 1 | Liberty files, SDC constraints, timing reports |
+| 7 | 📜 Shell Scripting | 3 | Variables, conditionals, loops, functions |
+| 8 | 📁 File System & Permissions | 4 | `chmod`, `chown`, ownership models, `find` |
+| 9 | ⚙️ Process Management | 4 | `ps`, signals, jobs, resource inspection |
+| 10 | 🌐 Networking Fundamentals | 3 | Interfaces, ports, connectivity diagnosis |
+| 11 | 🔄 Git & Version Control | 3 | Staging, history, branching |
+| 12 | 👤 User & System Administration | 3 | Accounts, groups, system inspection |
+| 13 | 🔬 Advanced Text Processing | 4 | `awk` programs, `sed` scripting, `join`, `comm` |
+| 14 | 📊 Data Analysis Pipeline | 4 | End-to-end CSV → report workflows |
+
+Each lesson carries an introduction, purpose, syntax reference, worked sections, a
+*common mistakes* list, best practices, hands-on exercises, and a quiz — with tags,
+a difficulty, an XP reward, and an estimated duration.
+
+### Challenges
+
+| Tier | Count | Character |
+|---|---|---|
+| Beginner | 11 | Single command, one flag |
+| Intermediate | 13 | Two-to-three stage pipelines |
+| Advanced | 11 | Multi-stage with field extraction and aggregation |
+| Expert | 9 | Non-obvious tool choices, precise regex |
+| Master | 6 | Full forensic workflows over messy real data |
+
+**17,150 XP** is available across all 50. Coverage by track: text processing (16),
+Linux fundamentals (13), log analysis (7), regex (6), VLSI (5), pipelines (3).
+
+### Missions
+
+| Mission | Difficulty | Stages | XP |
+|---|---|---|---|
+| 🛠️ Junior Linux Administrator | Beginner | 4 | 500 |
+| 🔄 Version Control Specialist | Beginner | 4 | 500 |
+| 👔 HR Data Analyst | Intermediate | 4 | 600 |
+| 🌐 Web Operations Engineer | Intermediate | 5 | 700 |
+| ⚙️ System Administration Pro | Intermediate | 5 | 700 |
+| 📡 Network Troubleshooter | Intermediate | 5 | 750 |
+| 🛡️ Security Analyst | Advanced | 4 | 800 |
+| ⚡ Physical Design Engineer | Advanced | 5 | 900 |
+| 📊 Data Pipeline Builder | Advanced | 5 | 900 |
+| 🏗️ Pipeline Architect | Expert | 5 | 1200 |
+
+### Workspace datasets
+
+Every exercise runs against files that ship with the repository — no downloads, no
+network, fully offline:
+
+```
+workspace/
+├── timing.rpt       11.4 KB   Static timing analysis report
+├── syslog.log       10.6 KB   System log with mixed facilities
+├── nginx.log         9.6 KB   nginx access log
+├── apache.log        8.2 KB   Apache combined access log
+├── server.log        6.7 KB   Application server log
+├── liberty.lib       6.3 KB   Liberty cell library
+├── article.txt       3.9 KB   Prose for word-frequency work
+├── synthesis.log     3.7 KB   EDA synthesis run output
+├── employees.csv     2.5 KB   HR records
+├── sales.csv         2.4 KB   Transaction data
+├── constraints.sdc   2.3 KB   Synopsys Design Constraints
+└── names.txt         0.7 KB   Small set for join/comm exercises
 ```
 
-### Custom Challenge Creation
+The Command Lab knows **43 commands**, including `grep`/`egrep`/`fgrep`, `sed`, `awk`/`gawk`,
+`cut`, `sort`, `uniq`, `tr`, `wc`, `head`, `tail`, `tee`, `paste`, `join`, `comm`, `find`,
+`xargs`, `column`, `nl`, `split`, `diff`, `cmp`, `base64`, `od`, `xxd`, `iconv`, `strings`,
+plus modern replacements `rg`, `fd`, `bat`, and `jq`.
 
-Define custom challenges with validation logic:
+---
+
+## Progression System
+
+### Ranks
+
+XP is cumulative and never decays. Twelve ranks span 0 → 50,000 XP:
+
+| Level | Rank | XP | | Level | Rank | XP |
+|---|---|---|---|---|---|---|
+| 1 | 🌱 Terminal Novice | 0 | | 7 | ⚡ Pipeline Master | 10,000 |
+| 2 | 🔰 Shell Apprentice | 500 | | 8 | 🔬 Log Investigator | 14,000 |
+| 3 | 🎯 Pattern Hunter | 1,200 | | 9 | 🤖 Automation Expert | 19,000 |
+| 4 | 🔮 Regex Apprentice | 2,500 | | 10 | 🏗️ Linux Architect | 25,000 |
+| 5 | 📝 Text Wrangler | 4,500 | | 11 | 💎 VLSI Investigator | 32,000 |
+| 6 | 🔗 Pipeline Builder | 7,000 | | 12 | 👑 ShellMentor Grandmaster | 50,000 |
+
+### How XP is earned
+
+| Source | Award |
+|---|---|
+| Lesson completion | Per-lesson reward, granted once |
+| Lesson exercise | Per-exercise reward, granted once each |
+| Quiz question | Each question's own reward — not a flat rate |
+| Challenge solve | Tier reward, plus a first-attempt bonus |
+| Mission stage | Per-stage reward |
+| Mission completion | 500–1,200 depending on difficulty |
+| Achievement unlock | 50–1,000 by rarity, routed through the normal XP path so a badge that triggers a level-up actually fires the level-up |
+
+Repeat completions and re-solves do not inflate counters. Every achievement trigger
+evaluates a real condition against your recorded stats — in earlier versions three were
+hardcoded `true` and handed out roughly 1,000 XP on the very first award.
+
+---
+
+## Keyboard Reference
+
+| Key | Action | | Key | Action |
+|---|---|---|---|---|
+| `Ctrl+P` | Command palette | | `Ctrl+A` | Achievements |
+| `Ctrl+D` / `F1` | Dashboard | | `Ctrl+N` | Notes |
+| `Ctrl+L` | Lessons | | `Ctrl+R` | Analytics |
+| `Ctrl+G` | Command Lab | | `Ctrl+T` | Settings |
+| `Ctrl+H` | Challenges | | `Ctrl+U` | Git Space |
+| `Ctrl+M` | Missions | | `Ctrl+Q` | Quit |
+
+`Esc` closes the command palette and every modal, and goes back one screen from any
+content screen. Session time is flushed to the database on quit *and* on unmount, so a
+clean exit never loses your minutes.
+
+---
+
+## Architecture
+
+Three layers, strictly ordered. UI never touches SQL; engines never touch widgets.
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  PRESENTATION                                        Textual widgets  │
+│                                                                       │
+│  main.py            App shell, global bindings, routing, XP events    │
+│  ui_core.py         BaseScreen, LevelUp/Achievement/Hint/Confirm/     │
+│                     Certificate modals                                │
+│  ui_screens.py      Dashboard · Lessons · Quiz · Playground · Notes · │
+│                     Analytics · Settings · EnvScan · Git Space        │
+│  ui_activities.py   Challenges · Challenge · Missions · Mission ·     │
+│                     Achievements                                      │
+│  ui.py              Re-export surface for the screen modules          │
+└────────────────────────────────┬─────────────────────────────────────┘
+                                 │  engine calls · event callbacks
+┌────────────────────────────────┴─────────────────────────────────────┐
+│  DOMAIN                                              no UI imports    │
+│                                                                       │
+│  learning.py     LearningEngine    lesson flow, exercises, quizzes    │
+│  challenge.py    ChallengeEngine   submission, hints, mission stages  │
+│  playground.py   PlaygroundEngine  history, sessions, autocomplete,   │
+│                                    templates, diff viewer             │
+│  progress.py     ProgressEngine    XP, ranks, achievements, portfolio │
+│  utils.py        shared types, SUPPORTED_COMMANDS, system probe       │
+└────────────────────────────────┬─────────────────────────────────────┘
+                                 │  DataManager API only
+┌────────────────────────────────┴─────────────────────────────────────┐
+│  PERSISTENCE                                                          │
+│                                                                       │
+│  data_manager.py   SQLite, 13 tables, schema migrations               │
+│  data/*.json       lessons · challenges · missions · achievements     │
+│  themes/*.yaml     7 themes: palette + Textual CSS                    │
+│  workspace/*       12 curriculum datasets                             │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Why it is shaped this way.** Engines are importable and testable without a terminal,
+which is what makes the headless smoke suite possible. Content lives in JSON rather than
+code, so adding a lesson requires no Python. Themes are data too — each is a palette plus
+a Textual CSS block, so a new theme is a YAML entry.
+
+### Module map
+
+| File | Lines | Responsibility |
+|---|---:|---|
+| `ui_screens.py` | 1,871 | Nine screens: dashboard through Git Space |
+| `data_manager.py` | 1,028 | SQLite access layer, schema, migrations, statistics |
+| `ui_activities.py` | 856 | Challenge and mission runners, achievement gallery |
+| `main.py` | 718 | Application shell, key bindings, screen routing, session timing |
+| `playground.py` | 493 | Command Lab: history, sessions, templates, diffs |
+| `learning.py` | 476 | Lesson sequencing, exercise and quiz grading |
+| `utils.py` | 446 | Shared dataclasses, command registry, environment probe |
+| `ui_core.py` | 423 | `BaseScreen` and the five shared modals |
+| `challenge.py` | 388 | Challenge and mission-stage validation, hint ladder |
+| `progress.py` | 321 | XP, level-ups, achievement evaluation, portfolio export |
+| **Total** | **7,020** | Plus `ui.py`, the re-export surface |
+
+---
+
+## Data & Storage
+
+### Where your data lives
+
+State is stored in a per-user SQLite database resolved through `platformdirs` — never
+inside the repository, so `git pull` can never clobber your progress:
+
+| Platform | Path |
+|---|---|
+| Linux | `~/.local/share/ShellMentor/shellmentor.db` |
+| macOS | `~/Library/Application Support/ShellMentor/shellmentor.db` |
+| WSL2 | Follows the Linux path inside the distribution |
+
+Delete that file to reset everything. **Settings → Reset All Progress** does the same
+thing selectively — clearing XP, streak, hint-free count, and the portfolio flag while
+deliberately preserving your notes.
+
+### Schema
+
+Thirteen tables, migrated forward on open:
+
+| Table | Holds |
+|---|---|
+| `user` | Profile, username, creation time |
+| `progress` | XP, level, streaks, aggregate counters |
+| `lesson_history` | Completions, scores, resume positions |
+| `challenge_history` | Attempts, solves, timings, `last_command` |
+| `mission_history` | Stage rows and completions, distinguished by `is_final` |
+| `achievements` | Unlocked badges with timestamps |
+| `notes` | Personal notes |
+| `sessions` | Command Lab session recordings |
+| `command_history` | Every submitted command, powering analytics |
+| `analytics` | Derived learning metrics |
+| `bookmarks` | Saved lessons and challenges |
+| `certificates` | Generated completion certificates |
+| `meta` | Schema version and migration state |
+
+Content JSON is read-only at runtime. Nothing in `data/` is written during a session.
+
+---
+
+## Authoring Your Own Content
+
+Content is plain JSON — no Python required. Restart the app to pick up changes.
+
+<details>
+<summary><b>Add a lesson</b> — <code>data/lessons.json</code></summary>
+
+Append to the `lessons` array of any track under `tracks`:
 
 ```json
 {
-  "id": "custom_challenge_001",
-  "title": "Challenge Title",
-  "description": "Challenge description",
-  "difficulty": "advanced",
-  "topic": "text_processing",
-  "setup_commands": [
-    "mkdir -p /tmp/challenge",
-    "cd /tmp/challenge"
+  "id": "custom_awk_intro",
+  "title": "AWK Field Extraction",
+  "icon": "🔬",
+  "difficulty": "intermediate",
+  "xp_reward": 150,
+  "estimated_minutes": 20,
+  "tags": ["awk", "fields", "text-processing"],
+  "introduction": "AWK reads input line by line and splits each into fields.",
+  "purpose": "Extract and reshape columnar data without writing a script.",
+  "syntax": "awk 'PATTERN { ACTION }' FILE",
+  "sections": [
+    {
+      "heading": "Field variables",
+      "body": "$1 is the first field, $NF the last, $0 the whole line.",
+      "example": "awk '{print $1, $NF}' workspace/employees.csv"
+    }
   ],
-  "test_command": "cat data.txt | your_command_here",
-  "expected_output": "^pattern_to_match$",
-  "hints": [
-    "Hint 1",
-    "Hint 2",
-    "Hint 3"
+  "common_mistakes": [
+    "Using $1 before setting -F on a comma-separated file"
   ],
-  "xp_reward": 100,
-  "alternative_solutions": [
-    "alternative_command_1",
-    "alternative_command_2"
+  "best_practices": [
+    "Prefer -F',' over manual splitting for CSV input"
+  ],
+  "exercises": [
+    {
+      "prompt": "Print the last field of every line in names.txt",
+      "solution": "awk '{print $NF}' names.txt",
+      "xp_reward": 25
+    }
+  ],
+  "quiz": [
+    {
+      "question": "Which variable holds the field count?",
+      "options": ["$NF", "NF", "$0", "FS"],
+      "answer": 1,
+      "xp_reward": 15
+    }
   ]
 }
 ```
 
-### Programmatic Data Access
+To add a whole track, append an object with `id`, `name`, `icon`, `color`,
+`description`, `order`, and `lessons` to `tracks`.
 
-Access ShellMentor data programmatically:
+</details>
 
-```python
-from data_manager import DataManager
-from learning import LearningEngine
-from progress import ProgressEngine
+<details>
+<summary><b>Add a challenge</b> — <code>data/challenges.json</code></summary>
 
-# Initialize managers
-dm = DataManager()
-learning = LearningEngine(dm)
-progress = ProgressEngine(dm)
-
-# Retrieve user progress
-user_progress = dm.get_progress()
-print(f"Current Level: {user_progress['level']}")
-print(f"Total XP: {user_progress['total_xp']}")
-
-# Export statistics
-stats = progress.get_progress_summary(user_id="default")
-print(stats)
-
-# Backup user data
-dm.export_progress("backup.json")
+```json
+{
+  "id": "custom_500_ips",
+  "title": "Server Error Sources",
+  "icon": "🎯",
+  "difficulty": "advanced",
+  "xp_reward": 350,
+  "track": "log_analysis",
+  "dataset": "nginx.log",
+  "objective": "List every unique IP that received a 500 response.",
+  "description": "The status code is field 9 in this log format.",
+  "hints": [
+    "awk can filter on a field before printing",
+    "Compare $9 against the literal 500",
+    "sort -u removes duplicates in one step"
+  ],
+  "expected_pattern": "awk.*\\$9.*500.*sort.*-u",
+  "validation_type": "pattern_match",
+  "solution": "awk '$9 == 500 {print $1}' nginx.log | sort -u",
+  "tags": ["awk", "logs", "nginx"]
+}
 ```
 
-### Analytics and Reporting
+`validation_type` accepts `pattern_match` (regex against the submission) or
+`line_count` (assert the number of result lines). Hints are revealed one at a time;
+solving without any feeds the hint-free counter behind several achievements.
 
-Generate detailed analytics reports:
+</details>
 
-```python
-from progress import ProgressEngine
+<details>
+<summary><b>Add a mission</b> — <code>data/missions.json</code></summary>
 
-progress_engine = ProgressEngine(data_manager)
-summary = progress_engine.get_progress_summary(user_id)
+Missions chain stages, each validated against its own reference solution before the
+next unlocks:
 
-print(f"Lessons Completed: {summary['lessons_completed']}")
-print(f"Challenges Passed: {summary['challenges_passed']}")
-print(f"Average Challenge Completion Time: {summary['avg_challenge_time']}")
-print(f"Learning Streak: {summary['current_streak']} days")
-print(f"Topics Mastered: {summary['mastered_topics']}")
+```json
+{
+  "id": "custom_triage",
+  "title": "Incident Triage",
+  "icon": "🚨",
+  "description": "Trace an outage from symptom to root cause.",
+  "difficulty": "advanced",
+  "xp_reward": 800,
+  "badge": "incident_responder",
+  "color": "#ef4444",
+  "stages": [
+    {
+      "title": "Find the spike",
+      "objective": "Count 5xx responses per hour",
+      "dataset": "nginx.log",
+      "solution": "awk '$9 ~ /^5/ {print $4}' nginx.log | cut -d: -f2 | sort | uniq -c",
+      "xp_reward": 150
+    }
+  ]
+}
 ```
+
+</details>
+
+<details>
+<summary><b>Add a theme</b> — <code>themes/themes.yaml</code></summary>
+
+Each theme is a palette plus a Textual CSS block:
+
+```yaml
+themes:
+  my_theme:
+    name: "My Theme"
+    description: "Short description shown in Settings"
+    base: dark
+    colors:
+      primary: "#00d4ff"
+      secondary: "#0099cc"
+      accent: "#ff6b35"
+      success: "#10b981"
+      warning: "#f59e0b"
+      error: "#ef4444"
+      surface: "#0d1117"
+      surface2: "#161b22"
+      surface3: "#21262d"
+      border: "#30363d"
+      text: "#e6edf3"
+      text_muted: "#7d8590"
+      text_dim: "#484f58"
+      xp_color: "#ffd700"
+    css: |
+      Screen { background: #0d1117; color: #e6edf3; }
+      Header { background: #161b22; color: #00d4ff; }
+```
+
+Ships with Professional Dark, Professional Light, Nord, Dracula, Matrix,
+Solarized Dark, and Cyber.
+
+</details>
+
+> **One caveat when authoring:** Textual parses square brackets as markup. Status
+> markers such as `[X]` or `[SOLVED]` vanish from rendered output if passed through a
+> markup-enabled widget. Use plain glyphs in content strings.
 
 ---
 
-## API Reference
+## Programmatic API
 
-### DataManager Class
-
-```python
-class DataManager:
-    def load_lessons() -> list[dict]
-    def load_challenges() -> list[dict]
-    def load_missions() -> list[dict]
-    def load_achievements() -> list[dict]
-    
-    def get_progress() -> dict
-    def update_progress(progress_data: dict) -> None
-    def save_progress() -> None
-    
-    def add_note(title: str, content: str) -> None
-    def get_notes() -> list[dict]
-    
-    def export_progress(filepath: str) -> None
-    def import_progress(filepath: str) -> None
-    
-    def close() -> None
-```
-
-### LearningEngine Class
+Every engine works headlessly, without a terminal:
 
 ```python
-class LearningEngine:
-    def load_lesson(lesson_id: str) -> dict
-    def get_current_progress(user_id: str) -> dict
-    def advance_lesson(user_id: str, lesson_id: str) -> bool
-    def get_lesson_list() -> list[dict]
-    def calculate_completion_percentage() -> float
+from data_manager import DataManager
+from progress import ProgressEngine
+from challenge import ChallengeEngine
+
+db = DataManager()                       # default path, or DataManager(Path("test.db"))
+progress = ProgressEngine(db)
+challenges = ChallengeEngine(db)
+
+stats = progress.get_stats()
+print(f"Level {stats['level']} · {stats['xp']} XP · {stats['challenges_solved']} solved")
+
+rank = progress.get_next_rank_info()
+print(f"Next: {rank['next_title']} — {rank['xp_needed']} XP to go "
+      f"({rank['progress_pct']:.0f}% there)")
+
+result = progress.award_xp(100, source="custom", label="External practice")
+if result.get("leveled_up"):
+    print(f"Level up → {result['new_level']}")
+
+content, path = progress.generate_portfolio()   # Markdown skills portfolio
+print(f"Portfolio written to {path}")
+
+db.close()
 ```
 
-### ChallengeEngine Class
+Key surfaces:
 
-```python
-class ChallengeEngine:
-    def get_challenge(challenge_id: str) -> dict
-    def validate_solution(challenge_id: str, user_command: str) -> dict
-    def get_hint(challenge_id: str) -> str
-    def submit_solution(user_id: str, challenge_id: str) -> dict
-    def get_challenges_by_topic(topic: str) -> list[dict]
-```
+| Class | Selected methods |
+|---|---|
+| `DataManager` | `get_user`, `get_progress`, `record_challenge_attempt`, `award_achievement`, `check_and_award_achievements`, `get_stats`, `close` |
+| `ProgressEngine` | `award_xp`, `get_stats`, `get_next_rank_info`, `generate_portfolio`, `reset_progress` |
+| `ChallengeEngine` | `submit_challenge`, `submit_mission_stage`, hint retrieval |
+| `LearningEngine` | Lesson sequencing, exercise and quiz grading, resume state |
+| `PlaygroundEngine` | `submit_command`, `new_session`, `replay_session`, `autocomplete`, `get_pipeline_templates`, `list_workspace_files`, `diff_outputs` |
 
-### PlaygroundEngine Class
+`DataManager` accepts an explicit `db_path`, which is how the tests run against a
+throwaway database instead of your real one.
 
-```python
-class PlaygroundEngine:
-    def execute_command(command: str) -> dict
-    def get_available_datasets() -> list[dict]
-    def get_command_history(limit: int) -> list[dict]
-    def clear_environment() -> None
-    def save_session(session_name: str) -> None
-```
+---
 
-### ProgressEngine Class
-
-```python
-class ProgressEngine:
-    def award_xp(user_id: str, xp_amount: int, source: str) -> None
-    def check_level_up(user_id: str) -> dict | None
-    def unlock_achievement(user_id: str, achievement_id: str) -> dict
-    def get_progress_summary(user_id: str) -> dict
-    def update_streak(user_id: str) -> None
-    def generate_portfolio() -> tuple[str, str]
-```
-
-
-## Contributing
-
-### Contribution Philosophy
-
-ShellMentor welcomes contributions from the community. All contributions should align with the project's vision of providing professional-grade Linux education.
-
-### Development Setup
-
-#### Clone and Environment Setup
+## Development
 
 ```bash
 git clone https://github.com/bitWithKunal/ShellMentor.git
 cd ShellMentor
+python3 -m venv .venv && source .venv/bin/activate
+python -m pip install -r requirements.txt pytest
 
-# Create development virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install development dependencies
-pip install -r requirements.txt
-pip install pytest pytest-cov black flake8 mypy
+python -m compileall -q .    # catches syntax errors everywhere
+python -m pytest -q          # 12 tests
+python main.py               # run it
 ```
 
+### Test layout
 
+| File | Covers |
+|---|---|
+| `test_core.py` | Engine logic against a temporary database — XP, validation, persistence |
+| `test_ui_smoke.py` | Mounts every screen through Textual's headless pilot |
 
-Commit message guidelines:
-- First line: Present tense, descriptive summary
-- Blank line
-- Detailed explanation of changes
-- Reference related issues
-- Explain reasoning and trade-offs
+The smoke tests are not optional decoration. Two of the crashes fixed in 4.4.0 —
+a screen method that shadowed Textual's internal `Screen._update_timer`, and an
+undefined name inside a render worker — were invisible to `compileall` and only
+surfaced when a screen was actually mounted.
 
-#### Step 5: Push and Create Pull Request
+### CI
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`, across
+Python 3.10, 3.11, 3.12, and 3.13: compile → test → build the package. A tagged
+`v*` push additionally triggers `release.yml`, which re-verifies and cuts a GitHub
+release with generated notes.
+
+### Conventions
+
+- Engines must not import Textual. If a fix needs a widget, it belongs in a UI module.
+- Content changes go in `data/*.json`, not in Python.
+- Any bug fix that a headless mount could have caught should come with a smoke test.
+- Dependency upper bounds exist for a reason — widen one only after re-testing the UI.
+
+---
+
+## Troubleshooting
+
+<details>
+<summary><b>Layout is broken or garbled</b></summary>
+
+Your terminal is likely below 80×24 or lacks true-colour support.
 
 ```bash
-# Push feature branch
-git push origin feature/descriptive-feature-name
-
-# Create Pull Request on GitHub
-# Provide:
-# - Clear title summarizing changes
-# - Description of modifications
-# - Rationale for changes
-# - Testing performed
-# - Screenshots/examples if applicable
+tput cols; tput lines          # want ≥ 80 × 24, ideally 120 × 32
+echo $COLORTERM                # want: truecolor
 ```
 
-### Contribution Categories
+Known-good terminals: GNOME Terminal, Kitty, Alacritty, WezTerm, iTerm2, Windows
+Terminal with WSL2.
 
-#### Code Contributions
+</details>
 
-Priority areas for code contributions:
-- Additional lesson content
-- Challenge problem creation
-- Performance optimization
-- Test coverage expansion
-- Bug fixes and error handling
+<details>
+<summary><b>Screen markers like [X] or [SOLVED] are missing</b></summary>
 
-#### Documentation Contributions
+Fixed in 4.4.0 — Textual was parsing them as markup tags. Update to the latest version.
+If you hit it in custom content you authored, use plain glyphs instead of bracketed text.
 
-Documentation improvements welcome:
-- API documentation expansion
-- Tutorial creation
-- Configuration guides
-- Troubleshooting resources
-- Architecture documentation
+</details>
 
-#### Content Contributions
+<details>
+<summary><b>Analytics is blank or crashes on a fresh profile</b></summary>
 
-Curriculum expansion:
-- New lesson topics
-- Challenge problems
-- Mission scenarios
-- VLSI workflow examples
-- Domain-specific content
+Also fixed in 4.4.0: `AVG()` and `MIN()` return NULL with no solved challenges, and an
+undefined name was killing the render worker before any widget mounted. Update, or solve
+one challenge to populate the aggregates.
 
-### Pull Request Review Process
+</details>
 
-All pull requests undergo review:
+<details>
+<summary><b>Progress looks wrong after upgrading</b></summary>
 
-1. **Automated Checks**: Code quality, tests, linting
-2. **Maintainer Review**: Functionality, design, documentation
-3. **Community Feedback**: Discussion and suggestions
-4. **Revision Cycle**: Address feedback and resubmit
-5. **Merge**: Upon approval by maintainers
+Several counters were incorrect before 4.4.0 — mission completions counted every stage,
+three achievements were hardcoded to fire, and lesson scores always read 100%. The
+schema migrates forward on open, but historical rows written by the buggy versions keep
+their original values. For a clean slate, use **Settings → Reset All Progress** (notes
+are preserved) or delete the database file.
+
+</details>
+
+<details>
+<summary><b>Textual import or rendering errors</b></summary>
+
+Almost always a version outside the supported range:
+
+```bash
+python -m pip install -r requirements.txt --force-reinstall
+```
+
+</details>
+
+<details>
+<summary><b>Optional tools reported missing</b></summary>
+
+**Settings → Environment Scan** probes for `git`, `grep`, `sed`, `awk`, `gawk`, `rg`,
+`fd`, `fzf`, `bat`, and `sqlite3`. None are required — ShellMentor never executes
+commands. The scan exists so you know what's available in your own terminal when you
+go practice for real.
+
+</details>
 
 ---
 
-## Project Roadmap
+## Contributing
 
-### Version 1.0 (Current)
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide and
+[SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
-- Interactive lesson framework
-- Challenge validation engine
-- Playground environment
-- Progress tracking system
-- Achievement system
-- Basic analytics
-
-
-
-## License
-
-ShellMentor is released under the MIT License. See LICENSE file for full details.
-
+```bash
+git checkout -b feature/your-change
+# make the change; add or update tests
+python -m compileall -q . && python -m pytest -q
+git commit -m "feat: describe the change"
+git push origin feature/your-change
 ```
-MIT License
 
-Copyright (c) 2026 Kunal Saraswat
+Then open a pull request describing what changed, why, and how you tested it.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+**Especially valuable:**
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+| Area | Examples |
+|---|---|
+| Curriculum | New lessons, challenges, or missions — pure JSON, no Python needed |
+| Datasets | Realistic logs and data files for `workspace/` |
+| Tracks | Kubernetes, containers, systemd, cloud CLIs |
+| Themes | A palette and CSS block in `themes/themes.yaml` |
+| Tests | Anything that would have caught a real bug |
+| Accessibility | Screen-reader behaviour, high-contrast palettes |
 
-THE SOFTWARE IS PROVIDED "AS IS", BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-ANY KIND, either express or implied. See the License for the specific language
-governing permissions and limitations under the License.
-```
+Every pull request must pass CI on all four supported Python versions.
 
 ---
 
-## Support
+## Roadmap
 
-### Getting Help
+**Shipped in 4.4.0** — see [CHANGELOG.md](CHANGELOG.md) for the full list.
 
-#### Documentation
-- Review comprehensive documentation in the repository
-- Check archived troubleshooting section
-- Review module-specific API documentation
+Every fix below was reproduced before it was changed.
 
-#### Community Support
-- GitHub Issues: Report bugs and request features
-- GitHub Discussions: Ask questions and share knowledge
-- Community forums: Engage with other learners
+- Fixed four crashes: the challenge screen, analytics rendering, analytics on a fresh
+  profile, and the mission runner on an already-complete mission
+- Corrected progression integrity: real achievement triggers, accurate mission counts,
+  honest lesson scoring, working first-attempt bonuses, recorded failed attempts
+- Fixed lesson resume, which had never worked — the position was written with an
+  `UPDATE` against a row that only exists after completion
+- Restored status markers eaten by Textual's markup parser
+- Added a headless UI smoke suite, CI across Python 3.10–3.13, and a release workflow
 
-#### Contact Information
+**Under consideration**
 
-- **Project Lead**: Kunal Saraswat
-- **GitHub**: https://github.com/bitWithKunal
-- **Email**: Contact via GitHub profile
-- **LinkedIn**: https://www.linkedin.com/in/kunalsaraswat/
-- **Issue Tracker**: https://github.com/bitWithKunal/ShellMentor/issues
+- Spaced-repetition review queue for previously solved challenges
+- Import/export of curriculum packs as a single file
+- Additional tracks: containers, systemd, cloud CLIs
+- Localisation of lesson content
+- Optional opt-in sandboxed execution mode, isolated from the grading path
 
-
-## Acknowledgements
-
-ShellMentor development relies on these exceptional open-source projects:
-
-- **Textual** (https://github.com/Textualize/textual) - Advanced terminal UI framework
-- **Rich** (https://github.com/Textualize/rich) - Rich terminal rendering
-- **PyYAML** (https://github.com/yaml/pyyaml) - Configuration management
-- **Click** (https://github.com/pallets/click) - CLI framework
-- **Python** (https://www.python.org/) - Language foundation
-
-Special thanks to all contributors who improve ShellMentor through code, documentation, and community engagement.
+Ideas and requests belong in [Issues](https://github.com/bitWithKunal/ShellMentor/issues).
 
 ---
 
-## Citation
+## License & Credits
 
-If ShellMentor has been useful in your learning journey, please consider citing it:
+Released under the [MIT License](LICENSE). Copyright © 2026 Kunal Saraswat.
+
+**Built on**
+
+- [Textual](https://github.com/Textualize/textual) — the terminal UI framework
+- [Rich](https://github.com/Textualize/rich) — terminal rendering
+- [PyYAML](https://github.com/yaml/pyyaml) — theme configuration
+- [platformdirs](https://github.com/platformdirs/platformdirs) — cross-platform data paths
+
+**Author** — Kunal Saraswat
+· [GitHub](https://github.com/bitWithKunal)
+· [LinkedIn](https://www.linkedin.com/in/kunalsaraswat/)
+· [Issue tracker](https://github.com/bitWithKunal/ShellMentor/issues)
+
+<details>
+<summary>Citation</summary>
 
 ```bibtex
 @software{shellmentor2026,
-  title={ShellMentor: Professional Linux Command-Line Learning Platform},
-  author={Saraswat, Kunal},
-  year={2026},
-  url={https://github.com/bitWithKunal/ShellMentor},
-  version={1.0.0}
+  title   = {ShellMentor: A Terminal-Native Linux Command-Line Learning Platform},
+  author  = {Saraswat, Kunal},
+  year    = {2026},
+  url     = {https://github.com/bitWithKunal/ShellMentor},
+  version = {4.4.0}
 }
 ```
 
+</details>
+
+<div align="center">
+
 ---
 
-**ShellMentor - Master Linux Command-Line Proficiency Through Structured, Practical Education**
+**Master the command line by writing commands — safely.**
 
-Last Updated: June 2026
+If ShellMentor helped you, a ⭐ on the repository is appreciated.
+
+</div>

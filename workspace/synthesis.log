@@ -1,0 +1,114 @@
+===========================================================
+  Design Compiler Synthesis Report
+  Design: cpu_core_top
+  Date: 15-Mar-2024
+  Library: NangateOpenCellLibrary
+===========================================================
+
+--- Design Statistics ---
+Cell Area:                     45231.25
+Net Total Length:              234567.89
+Combinational Area:           18923.45
+Non-combinational Area:       26307.80
+Cell Count:                    12456
+Port Count:                    256
+
+--- Timing Summary ---
+Design Name: cpu_core_top
+Clock: clk (period = 1.250ns, frequency = 800MHz)
+Global Slack (Setup): -0.567
+Worst Negative Slack (WNS): -0.567
+Total Negative Slack (TNS): -2.011
+Number of Failing Paths: 7
+
+--- Clock Summary ---
+Clock Name: clk
+Period: 1.250 ns
+Frequency: 800.000 MHz
+Source: clk_pad (in)
+Sink: 12456 flip-flops
+Skew: 0.045 ns
+Insertion Delay: 0.150 ns
+
+--- Power Summary ---
+Total Power: 125.43 mW
+Dynamic Power: 98.76 mW (78.7%)
+Leakage Power: 26.67 mW (21.3%)
+Cell Leakage Power: 26.67 mW
+
+--- Power Breakdown ---
+Internal Switching: 45.23 mW (45.8%)
+Net Switching:      32.12 mW (32.5%)
+Cell Leakage:       21.41 mW (21.7%)
+
+--- QoR Summary ---
+Critical Path Delay: 1.817 ns
+Slack Time: -0.567 ns
+Arrival Time: 5.015 ns
+Required Time: 4.448 ns
+Number of Violating Paths: 7
+Number of Nets: 15678
+Number of Points: 28901
+
+--- Resource Report ---
+Operation    Instances    Area          Power
+---------    ---------    ----          -----
+AND2X1         2345      4523.12       8.45 mW
+OR2X1          1890      3678.90       6.23 mW
+INVX1          3456      2345.67      12.34 mW
+MUX2X1         1234      5678.90       9.87 mW
+DFFX1          1567      8901.23      15.67 mW
+NAND2X1        890       1234.56       4.56 mW
+NOR2X1         678        987.65       3.45 mW
+XOR2X1         456       2345.67       7.89 mW
+XNOR2X1        234       1234.56       5.67 mW
+AOI21X1        567       2345.67       6.78 mW
+OAI21X1        345       1234.56       4.56 mW
+BUFX1          234        567.89       2.34 mW
+
+--- Timing Path Detail (Worst Path) ---
+Startpoint: u_decode/instr_reg[31] (CK)
+Endpoint:   u_ex/u_mult/mult_reg[63] (D)
+Path Group: clk
+Slack:      -0.567 ns
+
+  Component                          Delay (ns)   Arrival (ns)
+  --------------------------------   ----------   -----------
+  u_decode/instr_reg[31]/CK           0.150        0.150
+  u_decode/instr_reg[31]/Q            0.300        0.450
+  u_ex/u_mult/operand_a[31]           0.000        0.450
+  u_ex/u_mult/array_mult              4.200        4.650
+  u_ex/u_mult/product_mux             0.350        5.000
+  u_ex/u_mult/mult_reg[63]/D          0.015        5.015
+
+  Data Required: 4.448 ns
+  Data Arrival:  5.015 ns
+  Slack:        -0.567 ns (VIOLATED)
+
+--- Area by Module ---
+Module                    Cells    Area        % Total
+----------------------   -----    ----------  -------
+cpu_core_top               12456   45231.25    100.0%
+  u_fetch                   1890    6789.01     15.0%
+  u_decode                  1567    5432.10     12.0%
+  u_ex                      3456   12345.67     27.3%
+  u_mem                     2345    8901.23     19.7%
+  u_wb                      1234    4567.89     10.1%
+  u_hazard                   890    3456.78      7.6%
+  u_regfile                  567    2345.67      5.2%
+  u_branch                   507    1392.90      3.1%
+
+--- Net Count by Fanout ---
+Fanout    Nets    % Total
+------    ----    -------
+1          5678    36.2%
+2-4        4567    29.1%
+5-8        3456    22.1%
+9-16       1234     7.9%
+17-32       567     3.6%
+33+         176     1.1%
+
+--- Verdict ---
+The design does NOT meet timing. 7 paths have negative slack.
+The multiplier unit in u_ex is the critical path bottleneck.
+Recommendation: Consider pipelining the multiplier or using a faster multiplier architecture.

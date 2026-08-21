@@ -1,4 +1,4 @@
-ShellMentor v2.0.0 — Project Summary
+ShellMentor v4.4.0 — Project Summary
 ======================================
 Professional Linux Command-Line Learning Platform
 Author: Kunal Saraswat | License: MIT | July 2026
@@ -11,20 +11,20 @@ in SQLite. No external services required.
 
 CODEBASE
 --------
-12 Python files | ~5,500 lines | 4 JSON data files | 12 YAML themes
+14 Python files | ~7,400 lines | 4 JSON data files | 7 YAML themes
 
 main.py          697 lines  App entry, themes, keybindings, lifecycle
 ui.py             73 lines  Re-export shim
-ui_core.py       451 lines  BaseScreen, NavButton, modals
-ui_screens.py  1,555 lines  Dashboard, Lessons, Quiz, Playground, Notes,
+ui_core.py       490 lines  BaseScreen, NavButton, modals (5)
+ui_screens.py  1,710 lines  Dashboard, Lessons, Quiz, Playground, Notes,
                             Analytics, Settings, EnvScan (8 screens)
-ui_activities.py  765 lines  Challenges, Missions, Achievements
-learning.py      401 lines  Lesson/quiz engine, command translator
-challenge.py     296 lines  Challenge/mission validation, XP scoring
+ui_activities.py  776 lines  Challenges, Missions, Achievements
+learning.py      440 lines  Lesson/quiz engine, bookmarks, resume, certificates
+challenge.py     345 lines  Challenge/mission validation, XP, streak, timers
 playground.py    479 lines  Command execution, autocomplete, sessions
 progress.py      311 lines  XP, levels, achievements, portfolio
-data_manager.py  638 lines  SQLite persistence (9 tables)
-utils.py         584 lines  Sandbox engine, system detection, utilities
+data_manager.py  800 lines  SQLite persistence (11 tables)
+utils.py         618 lines  Sandbox engine, system detection, utilities
 sandbox.py       463 lines  Extended sandbox (unused)
 test_core.py      70 lines  6 basic tests
 
@@ -32,17 +32,17 @@ FEATURES
 --------
 1. Structured Lessons    — 3 tracks, 25+ lessons with sections/exercises/quizzes
 2. Command Playground    — Sandboxed execution, 50+ autocomplete templates
-3. Challenges            — 20+ scored exercises with hints and validation
+3. Challenges            — 50 scored exercises with hints, timers, and validation
 4. Missions              — Multi-stage narrative learning objectives
 5. Gamification          — 12-level ranking (Novice -> Grandmaster), 25+ achievements
 6. Notes                 — Search, edit, save, export
 7. Analytics             — Progress stats, command usage, challenge breakdown
 8. Theming               — YAML-based themes with live switching
-9. Safety                — 50+ blocked commands, 15 blocked patterns
+9. Safety                — 50+ blocked commands, 17 blocked patterns
 
 ARCHITECTURE
 ------------
-  UI Layer → Engine Layer → Data Layer
+  UI Layer -> Engine Layer -> Data Layer
   (ui_core,      (learning,    (data_manager
    ui_screens,    challenge,    — SQLite)
    ui_activities) playground,
@@ -74,19 +74,31 @@ WHAT WORKS WELL
 - Command translator and regex visualizer add real pedagogical value
 - Theme system with live preview is polished
 - Data layer has proper schema, WAL, foreign keys
+- Challenge streak bonus incentivizes consecutive solving
+- Certificate modal rewards high-score completion
+- Timer mode adds urgency to challenges
+- Bookmark/resume system for lesson continuity
 
-TOP ISSUES
-----------
-1. Double XP bug (lessons + challenges record twice)
-2. Sandbox bypass via && and ; command chaining
-3. Missing shell blocking (zsh, fish, csh)
-4. Challenge validation too permissive
-5. Dashboard queries DB every second
-6. Only 6 tests for 5,500 lines
+NEW IN v4.3.0
+--------------
+Learning:
+  - Exercise output validation (regex + command structure)
+  - Lesson bookmarking with resume from last position
+  - Difficulty indicators in track sidebar
+  - Favorite/bookmark toggle for quick access
+  - Estimated time remaining during lessons
+  - Lesson completion certificates (score >= 80%)
+
+Challenges:
+  - Timed mode with countdown timer
+  - Streak bonus (+5% per solve, capped at +50%)
+  - Auto-difficulty adjustment suggestions
+  - Retry button (restart in-place)
+  - Solution display on abandon/timeout
+  - 22 new challenges (total: 50)
 
 VERDICT
 -------
-Well-structured project with solid architecture. The sandbox safety
-system and gamification engine are above average for a learning tool.
-Main concerns: double-XP bugs, sandbox gaps, and low test coverage.
-Fix the critical bugs and add tests for production readiness.
+Full-featured learning platform with gamification, sandbox security,
+and 50 challenges across 5 difficulty levels. All planned features
+implemented. Add tests for production readiness.

@@ -1,0 +1,250 @@
+===========================================================
+  PrimeTime Timing Report - Setup Analysis
+  Design: cpu_core_top
+  Date: 15-Mar-2024
+  Corner: SS_0P81V_125C
+===========================================================
+
+Path 1: MET (Slack = 0.023)
+  Startpoint: reg_alu_out_reg[31] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   reg_wb_data_reg[31] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:       0.023
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_alu_out_reg[31]/CK       0.150       0.150
+  reg_alu_out_reg[31]/Q        0.320       0.470
+  u_alu/u_adder/A[31]          0.000       0.470
+  u_alu/u_adder/Z              1.250       1.720
+  u_mux/B[31]                  0.000       1.720
+  u_mux/Z                      0.480       2.200
+  u_regfile/D[31]              0.000       2.200
+  reg_wb_data_reg[31]/D        0.012       2.212
+  -------------------------------------------------------
+  Data Required Time:          2.235
+  Data Arrival Time:           2.212
+  Slack:                       0.023  [MET]
+===========================================================
+
+Path 2: VIOLATED (Slack = -0.156)
+  Startpoint: reg_pc_reg[63] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_fetch/u_icache/tags_reg[63] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.156
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_pc_reg[63]/CK            0.150       0.150
+  reg_pc_reg[63]/Q             0.380       0.530
+  u_fetch/u_icache/A[63]       0.000       0.530
+  u_fetch/u_icache/comp/Z      0.920       1.450
+  u_fetch/u_icache/match_logic/XOR 1.850   3.300
+  u_fetch/u_icache/valid_gate/Z 0.440       3.740
+  u_fetch/u_icache/tags_reg[63]/D 0.015      3.755
+  -------------------------------------------------------
+  Data Required Time:          3.599
+  Data Arrival Time:           3.755
+  Slack:                      -0.156  [VIOLATED]
+===========================================================
+
+Path 3: VIOLATED (Slack = -0.342)
+  Startpoint: u_decode/instr_reg[47] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_regfile/regs_reg[15] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.342
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  u_decode/instr_reg[47]/CK    0.150       0.150
+  u_decode/instr_reg[47]/Q     0.290       0.440
+  u_decode/u_decoder/opcode_in 0.000       0.440
+  u_decode/u_decoder/control/Z 2.100       2.540
+  u_regfile/wr_en_mux/Z        0.380       2.920
+  u_regfile/write_logic/Z      1.450       4.370
+  u_regfile/regs_reg[15]/D     0.015       4.385
+  -------------------------------------------------------
+  Data Required Time:          4.043
+  Data Arrival Time:           4.385
+  Slack:                      -0.342  [VIOLATED]
+===========================================================
+
+Path 4: VIOLATED (Slack = -0.089)
+  Startpoint: reg_ex_out_reg[15] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   reg_mem_addr_reg[15] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.089
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_ex_out_reg[15]/CK        0.150       0.150
+  reg_ex_out_reg[15]/Q         0.310       0.460
+  u_lsu/addr_mux/A[15]         0.000       0.460
+  u_lsu/addr_mux/Z             0.520       0.980
+  u_lsu/cache_ctrl/addr_reg_in 0.000       0.980
+  u_lsu/cache_ctrl/addr_reg[15]/D 0.012      0.992
+  -------------------------------------------------------
+  Data Required Time:          0.903
+  Data Arrival Time:           0.992
+  Slack:                      -0.089  [VIOLATED]
+===========================================================
+
+Path 5: VIOLATED (Slack = -0.567)
+  Startpoint: u_decode/instr_reg[31] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_ex/u_mult/mult_reg[63] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.567
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  u_decode/instr_reg[31]/CK    0.150       0.150
+  u_decode/instr_reg[31]/Q     0.300       0.450
+  u_ex/u_mult/operand_a[31]    0.000       0.450
+  u_ex/u_mult/array_mult/Z     4.200       4.650
+  u_ex/u_mult/product_mux/Z    0.350       5.000
+  u_ex/u_mult/mult_reg[63]/D   0.015       5.015
+  -------------------------------------------------------
+  Data Required Time:          4.448
+  Data Arrival Time:           5.015
+  Slack:                      -0.567  [VIOLATED]
+===========================================================
+
+Path 6: MET (Slack = 0.045)
+  Startpoint: reg_id_opA_reg[23] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_ex/u_alu/reg_result_reg[23] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:       0.045
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_id_opA_reg[23]/CK        0.150       0.150
+  reg_id_opA_reg[23]/Q         0.310       0.460
+  u_ex/u_alu/operand_a[23]     0.000       0.460
+  u_ex/u_alu/adder/B[23]       0.000       0.460
+  u_ex/u_alu/adder/Z           1.100       1.560
+  u_ex/u_alu/result_mux/Z      0.420       1.980
+  u_ex/u_alu/reg_result_reg[23]/D 0.012      1.992
+  -------------------------------------------------------
+  Data Required Time:          2.037
+  Data Arrival Time:           1.992
+  Slack:                       0.045  [MET]
+===========================================================
+
+Path 7: VIOLATED (Slash = -0.234)
+  Startpoint: reg_if_pc_reg[47] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_decode/instr_reg[47] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.234
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_if_pc_reg[47]/CK         0.150       0.150
+  reg_if_pc_reg[47]/Q          0.350       0.500
+  u_fetch/u_icache/tag_compare 0.000       0.500
+  u_fetch/u_icache/hit_logic   1.850       2.350
+  u_fetch/mux_instr/Z          0.880       3.230
+  u_decode/instr_reg[47]/D     0.015       3.245
+  -------------------------------------------------------
+  Data Required Time:          3.011
+  Data Arrival Time:           3.245
+  Slack:                      -0.234  [VIOLATED]
+===========================================================
+
+Path 8: VIOLATED (Slack = -0.178)
+  Startpoint: u_ex/alu_op_reg[5] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_ex/u_alu/carry_reg (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.178
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  u_ex/alu_op_reg[5]/CK        0.150       0.150
+  u_ex/alu_op_reg[5]/Q         0.290       0.440
+  u_ex/u_alu/opcode_mux/Z      0.420       0.860
+  u_ex/u_alu/carry_gen/AND2    0.650       1.510
+  u_ex/u_alu/carry_reg/D       0.015       1.525
+  -------------------------------------------------------
+  Data Required Time:          1.347
+  Data Arrival Time:           1.525
+  Slack:                      -0.178  [VIOLATED]
+===========================================================
+
+Path 9: MET (Slack = 0.112)
+  Startpoint: reg_wb_data_reg[7] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   reg_rd_data_reg[7] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:       0.112
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  reg_wb_data_reg[7]/CK        0.150       0.150
+  reg_wb_data_reg[7]/Q         0.280       0.430
+  u_hazard/wb_fwd_mux/A[7]     0.000       0.430
+  u_hazard/wb_fwd_mux/Z        0.380       0.810
+  u_regfile/out_mux/Z          0.450       1.260
+  reg_rd_data_reg[7]/D         0.012       1.272
+  -------------------------------------------------------
+  Data Required Time:          1.384
+  Data Arrival Time:           1.272
+  Slack:                       0.112  [MET]
+===========================================================
+
+Path 10: VIOLATED (Slack = -0.445)
+  Startpoint: u_decode/instr_reg[63] (rising edge-triggered flip-flop clocked by clk)
+  Endpoint:   u_ex/u_shift/shift_amt_reg[5] (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type:  Setup
+  Slack:      -0.445
+  -------------------------------------------------------
+  Pin                          Delay       Arrival
+  -------------------------------------------------------
+  clk (in)                     0.000       0.000
+  u_decode/instr_reg[63]/CK    0.150       0.150
+  u_decode/instr_reg[63]/Q     0.300       0.450
+  u_ex/u_shift/shamt_extract   0.000       0.450
+  u_ex/u_shift/barrel_shifter  2.300       2.750
+  u_ex/u_shift/shift_amt_reg[5]/D 0.015      2.765
+  -------------------------------------------------------
+  Data Required Time:          2.320
+  Data Arrival Time:           2.765
+  Slack:                      -0.445  [VIOLATED]
+===========================================================
+
+-----------------------------------------------------------
+  Summary
+-----------------------------------------------------------
+  Startpoint                              Endpoint                        Slack
+  reg_alu_out_reg[31]                     reg_wb_data_reg[31]             0.023
+  reg_pc_reg[63]                          u_fetch/u_icache/tags_reg[63]  -0.156
+  u_decode/instr_reg[47]                  u_regfile/regs_reg[15]         -0.342
+  reg_ex_out_reg[15]                      reg_mem_addr_reg[15]           -0.089
+  u_decode/instr_reg[31]                  u_ex/u_mult/mult_reg[63]      -0.567
+  reg_id_opA_reg[23]                      u_ex/u_alu/reg_result_reg[23]  0.045
+  reg_if_pc_reg[47]                       u_decode/instr_reg[47]        -0.234
+  u_ex/alu_op_reg[5]                      u_ex/u_alu/carry_reg          -0.178
+  reg_wb_data_reg[7]                      reg_rd_data_reg[7]             0.112
+  u_decode/instr_reg[63]                  u_ex/u_shift/shift_amt_reg[5] -0.445
+-----------------------------------------------------------
+  Total paths: 10
+  MET:        3
+  VIOLATED:   7
+  Worst Slack: -0.567
+-----------------------------------------------------------

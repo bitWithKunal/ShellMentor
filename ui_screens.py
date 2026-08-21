@@ -10,49 +10,28 @@ Shared widgets, BaseScreen and modals live in ui_core.py.
 from __future__ import annotations
 
 import logging
-import time
+import re
 from pathlib import Path
-from typing import Any
 
 from rich.text import Text
-from rich.panel import Panel
-from rich.table import Table
-from rich.columns import Columns
-from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
-from rich.syntax import Syntax
-from rich.markdown import Markdown
 
 from textual import on, work
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import (
-    Container, Horizontal, Vertical, ScrollableContainer, Grid
-)
-from textual.reactive import reactive
-from textual.screen import Screen, ModalScreen
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
+from textual.screen import Screen
 from textual.widgets import (
-    Button, DataTable, Footer, Header, Input, Label,
-    ListItem, ListView, Markdown as MarkdownWidget,
-    ProgressBar, RichLog, Rule, Select, Static,
-    TabbedContent, TabPane, Tabs, Tab, TextArea, Tree, Checkbox, RadioButton, RadioSet
+    Button, Footer, Header, Input, Label, ListItem, ListView,
+    RichLog, Rule, Select, Static, TextArea,
 )
 
-from data_manager import DataManager
-from learning import LearningEngine
-from challenge import ChallengeEngine
-from playground import PlaygroundEngine
-from progress import ProgressEngine, LevelUpEvent, XPEvent
 from utils import (
-    detect_system, SystemInfo, get_install_command,
-    load_yaml, THEMES_DIR, difficulty_icon, difficulty_color,
-    rarity_color, format_xp, format_duration, truncate, APP_VERSION, APP_NAME
+    SystemInfo, get_install_command, load_yaml, THEMES_DIR,
+    difficulty_icon, difficulty_color, format_xp, format_duration,
+    truncate, APP_VERSION, APP_NAME,
 )
 
-from ui_core import (
-    NavButton, NavigationSidebar, BaseScreen,
-    XPBar, StatCard, SectionHeader,
-    LevelUpModal, AchievementModal, HintModal, ConfirmModal,
-)
+from ui_core import BaseScreen, ConfirmModal, CertificateModal
 
 logger = logging.getLogger("shellmentor")
 
@@ -100,10 +79,21 @@ class DashboardScreen(BaseScreen):
         self._refresh_dashboard_data()
         self._start_animation()
 
+    def on_unmount(self) -> None:
+        """Stop timers when leaving dashboard to prevent leaks."""
+        if self._animation_timer:
+            self._animation_timer.stop()
+            self._animation_timer = None
+        if self._data_timer:
+            self._data_timer.stop()
+            self._data_timer = None
+
     def _start_animation(self) -> None:
         """Start animated counter for dashboard."""
-        self._animation_timer = self.set_interval(1.0, self._update_animated_effects)
-        self._data_timer = self.set_interval(5.0, self._refresh_dashboard_data)
+        # The whole ASCII block is re-parsed on every tick, so keep the
+        # cosmetic animation slow and the data refresh slower still.
+        self._animation_timer = self.set_interval(3.0, self._update_animated_effects)
+        self._data_timer = self.set_interval(15.0, self._refresh_dashboard_data)
 
     def _update_animated_effects(self) -> None:
         """Update animated elements on dashboard using cached data."""
@@ -243,7 +233,7 @@ class DashboardScreen(BaseScreen):
 
 [bold white]  ═══════════════════════════════════════════════════════════════════════════════════════════════════[/bold white]
 
-  [bold white]›› {username}[/bold white]  [dim]·[/dim]  [gold1]{stats['rank_title']}[/gold1]  [dim]·[/dim]  [cyan]Level {stats['level']}[/cyan]  [dim]·[/dim]  [gold1]{format_xp(stats['xp'])} XP[/gold1]  [dim]·[/dim]  {streak_txt}
+  [bold white]›› {username}[/bold white]  [dim]·[/dim]  [gold1]{stats['rank_title']}[/gold1]  [dim]·[/dim]  [cyan]Level {stats['level']}[/cyan]  [dim]·[/dim]  [gold1]{format_xp(stats['xp'])}[/gold1]  [dim]·[/dim]  {streak_txt}
 
   [dim]Progress to {next_rank['next_title']}:[/dim]
   {bar}  [bold]{pct}%[/bold]  [dim]({xp_needed:,} XP remaining)[/dim]
@@ -266,7 +256,7 @@ class DashboardScreen(BaseScreen):
   [bold grey50]▶ KEYBOARD SHORTCUTS[/bold grey50]
   [dim]Ctrl+L[/dim] Lessons    [dim]Ctrl+G[/dim] Playground   [dim]Ctrl+H[/dim] Challenges   [dim]Ctrl+M[/dim] Missions
   [dim]Ctrl+A[/dim] Achievements [dim]Ctrl+N[/dim] Notes       [dim]Ctrl+R[/dim] Analytics   [dim]Ctrl+D[/dim] Dashboard
-  [dim]Ctrl+P[/dim] Command Palette  [dim]Ctrl+Q[/dim] Quit
+  [dim]Ctrl+T[/dim] Settings   [dim]Ctrl+U[/dim] Git Space    [dim]Ctrl+P[/dim] Command Palette  [dim]Ctrl+Q[/dim] Quit
 
   {sep}
 
@@ -293,6 +283,9 @@ class LessonsScreen(BaseScreen):
         self.current_lesson_id = ""
         self._exercise_inputs = []
         self._exercise_results = []
+        # Correctness is tracked here; it used to be recovered by searching the
+        # rendered text for "CORRECT", which also matches "INCORRECT".
+        self._exercise_correct: list[bool] = []
 
     def render_content(self) -> ComposeResult:
         with Horizontal(id="lessons-layout"):
@@ -336,8 +329,11 @@ class LessonsScreen(BaseScreen):
             pct = track["pct_complete"]
             filled = int(pct / 20)
             bar = "X" * filled + "." * (5 - filled)
+            dcol = track.get("difficulty_color", "white")
+            dicon = track.get("difficulty_icon", "")
             label = (
                 f"{track['name']}  "
+                f"[{dcol}]{dicon}[/{dcol}]  "
                 f"[cyan]{bar}[/]  "
                 f"[grey50]{track['lessons_done']}/{track['lessons_total']}[/]"
             )
@@ -360,12 +356,14 @@ class LessonsScreen(BaseScreen):
     @work(exclusive=True)
     async def _load_lessons_async(self, track_id: str) -> None:
         lessons_list = self.query_one("#lessons-list", ListView)
+        bookmarked = self.app.learning_engine.get_bookmarked_lessons()
         items = []
         for lesson in self.app.learning_engine.get_track_lessons(track_id):
-            status = "[X]" if lesson["completed"] else ("[LOCKED]" if lesson.get("locked") else "[ ]")
+            status = "✔" if lesson["completed"] else ("🔒" if lesson.get("locked") else "○")
             diff   = difficulty_icon(lesson["difficulty"])
+            star   = "[gold1]*[/]" if lesson["id"] in bookmarked else " "
             label  = (
-                f"{status} {lesson['title']}  "
+                f"{status} {star} {lesson['title']}  "
                 f"{diff}  [gold1]+{lesson['xp_reward']}[/]"
             )
             items.append(ListItem(Label(Text.from_markup(label)), id=f"lesson-{lesson['id']}"))
@@ -382,7 +380,28 @@ class LessonsScreen(BaseScreen):
     def _show_lesson(self, lesson_id: str) -> None:
         self.current_lesson_id = lesson_id
         self.app.learning_engine.start_lesson(lesson_id)
-        self._load_lesson_async(lesson_id)
+        if not self._check_resume(lesson_id):
+            self._load_lesson_async(lesson_id)
+
+    def _check_resume(self, lesson_id: str) -> bool:
+        """Prompt to resume from a saved position. Returns True if asked."""
+        saved = self.app.learning_engine.get_resume_section(lesson_id)
+        if saved <= 0:
+            return False
+
+        def handle_resume(resume: bool | None) -> None:
+            session = self.app.learning_engine.active_lesson
+            if session:
+                # start_lesson() already restored the saved section, so "No"
+                # has to explicitly rewind to the beginning.
+                session.current_section = saved if resume else 0
+                self.app.learning_engine.save_current_position()
+            self._load_lesson_async(lesson_id)
+
+        self.app.push_screen(
+            ConfirmModal(f"Resume from section {saved + 1}?"), handle_resume
+        )
+        return True
 
     @work(exclusive=True)
     async def _load_lesson_async(self, lesson_id: str) -> None:
@@ -395,17 +414,25 @@ class LessonsScreen(BaseScreen):
 
         self._exercise_inputs = []
         self._exercise_results = []
+        self._exercise_correct = []
 
         completed = lesson_id in self.app.db.get_completed_lessons()
-        status_line = "[green][COMPLETED][/]" if completed else "[yellow][IN PROGRESS][/]"
+        status_line = "[green]✔ COMPLETED[/]" if completed else "[yellow]• IN PROGRESS[/]"
+        bookmarked = self.app.learning_engine.is_bookmarked(lesson_id)
+        bm_label = "[gold1]* Bookmarked[/]" if bookmarked else "Bookmark"
+
+        # Estimated time remaining
+        remaining = self.app.learning_engine.estimate_remaining_minutes(lesson_id)
+        est = f"~{remaining:.0f} min left" if remaining > 0 else f"~{lesson.get('estimated_minutes',15)} min"
 
         widgets = [
             Static(
                 f"\n  [bold cyan]{lesson['title']}[/]  {status_line}\n"
                 f"  [grey50]{difficulty_icon(lesson['difficulty'])} {lesson['difficulty']}  |  "
-                f"~{lesson.get('estimated_minutes',15)} min  |  "
+                f"{est}  |  "
                 f"[gold1]+{lesson['xp_reward']} XP[/][/grey50]\n"
             ),
+            Button(f"  {bm_label}", id="toggle-bookmark", variant="default"),
             Rule(),
             Static(f"  [bold]INTRODUCTION[/]\n  {lesson.get('introduction','')}\n"),
             Static(
@@ -455,6 +482,7 @@ class LessonsScreen(BaseScreen):
                 res = Static("")
                 self._exercise_inputs.append(inp)
                 self._exercise_results.append(res)
+                self._exercise_correct.append(False)
                 widgets.append(inp)
                 widgets.append(res)
                 widgets.append(Static(""))
@@ -492,23 +520,38 @@ class LessonsScreen(BaseScreen):
             return
         exercise = exercises[ex_idx]
 
-        result = self.app.playground_engine.sandbox.run(command)
-        validation = self.app.learning_engine.validate_exercise(exercise, command, result.stdout)
+        result = self.app.playground_engine.submit_command(command, context="lesson")
+        validation = self.app.learning_engine.validate_exercise(exercise, command, "")
 
         if ex_idx < len(self._exercise_results):
             result_widget = self._exercise_results[ex_idx]
             if validation["correct"]:
-                result_widget.update(
-                    f"  [green]CORRECT! +{validation['xp']} XP[/]  "
-                    f"[grey50]{truncate(result.stdout, 40)}[/]"
+                if ex_idx < len(self._exercise_correct):
+                    self._exercise_correct[ex_idx] = True
+                awarded = self.app.progress_engine.complete_exercise(
+                    self.current_lesson_id, ex_idx, validation["xp"]
                 )
-                self.app.progress_engine.award_xp(validation["xp"], "exercise", f"Exercise {ex_idx}")
+                suffix = (f"+{validation['xp']} XP" if awarded
+                          else "already credited")
+                result_widget.update(
+                    f"  [green]CORRECT![/] [gold1]{suffix}[/]  "
+                    "[grey50]Command structure accepted.[/]"
+                )
             else:
                 hint = f"  Hint: {validation['hint']}" if validation.get("hint") else ""
                 result_widget.update(
                     f"  [red]INCORRECT.[/]{hint}\n"
-                    f"  [grey50]{truncate(result.output, 50)}[/]"
+                    "  [grey50]Commands are assessed but never executed.[/]"
                 )
+
+    @on(Button.Pressed, "#toggle-bookmark")
+    def toggle_bookmark(self) -> None:
+        if self.current_lesson_id:
+            is_bm = self.app.learning_engine.toggle_bookmark(self.current_lesson_id)
+            label = "[gold1]* Bookmarked[/]" if is_bm else "Bookmark"
+            btn = self.query_one("#toggle-bookmark", Button)
+            btn.label = Text.from_markup(f"  {label}")
+            self._populate_lessons(self.current_track)
 
     @on(Button.Pressed, "#start-quiz")
     def start_quiz(self) -> None:
@@ -520,10 +563,22 @@ class LessonsScreen(BaseScreen):
     def complete_lesson(self) -> None:
         if not self.current_lesson_id:
             return
-        # Calculate score from exercise results
-        total = len(self._exercise_results)
-        correct = sum(1 for r in self._exercise_results if "CORRECT" in (r.render() or ""))
-        score = int((correct / total * 100)) if total > 0 else 100
+        # Calculate score from exercise + quiz performance
+        ex_total = len(self._exercise_correct)
+        ex_correct = sum(1 for ok in self._exercise_correct if ok)
+        quiz_session = self.app.learning_engine.active_lesson.quiz_session if self.app.learning_engine.active_lesson else None
+        if quiz_session and quiz_session.total > 0:
+            quiz_pct = int(quiz_session.correct / quiz_session.total * 100)
+        else:
+            quiz_pct = 0
+        if ex_total > 0 and quiz_session and quiz_session.total > 0:
+            score = int((ex_correct / ex_total * 50) + (quiz_pct * 0.5))
+        elif ex_total > 0:
+            score = int(ex_correct / ex_total * 100)
+        elif quiz_session and quiz_session.total > 0:
+            score = quiz_pct
+        else:
+            score = 100
         # Get completion info from learning engine (no DB write yet)
         info = self.app.learning_engine.complete_lesson(score=score)
         if not info:
@@ -535,6 +590,14 @@ class LessonsScreen(BaseScreen):
         )
         self._populate_lessons(self.current_track)
         self.app.show_notification(f"Lesson complete! +{info['xp']} XP", severity="information")
+        # Issue certificate for high scores
+        if score >= 80 and not self.app.db.has_certificate(info["lesson_id"]):
+            cert_id = self.app.db.issue_certificate(
+                info["lesson_id"], info["track_id"], score
+            )
+            self.app.push_screen(CertificateModal(
+                info["lesson"], info["track_id"], score, info["xp"]
+            ))
 
 
 
@@ -620,8 +683,10 @@ class QuizScreen(Screen):
             self._submit_answer(inp.value)
 
     def _submit_answer(self, answer: str) -> None:
+        question = self.session.current_question or {}
+        question_xp = question.get("xp", 10)
         result = self.session.answer(answer)
-        self.app.progress_engine.record_quiz_answer(result["correct"])
+        self.app.progress_engine.record_quiz_answer(result["correct"], xp=question_xp)
         self._load_answer_async(result)
 
     @work(exclusive=True)
@@ -694,6 +759,12 @@ class QuizScreen(Screen):
 class PlaygroundScreen(BaseScreen):
     """Interactive command playground."""
 
+    BINDINGS = [
+        Binding("up",   "history_prev", "Previous command", show=False),
+        Binding("down", "history_next", "Next command",     show=False),
+        Binding("tab",  "complete",     "Autocomplete",     show=False),
+    ]
+
     def __init__(self):
         super().__init__(screen_name="playground")
         self._file_map = {}
@@ -753,6 +824,9 @@ class PlaygroundScreen(BaseScreen):
     def on_mount(self) -> None:
         self._populate_files()
         self._populate_templates()
+        # Recording a session makes the saved-session and analytics features
+        # meaningful; previously nothing ever created one.
+        self.app.playground_engine.new_session()
         output = self.query_one("#pg-output", RichLog)
         files = self.app.playground_engine.list_workspace_files()
         if files:
@@ -763,7 +837,8 @@ class PlaygroundScreen(BaseScreen):
             f"[bold]ShellMentor Playground[/]  [dim]v{APP_VERSION}[/]\n"
             f"[dim]{'-' * 60}[/]\n"
             f"[dim]Workspace:[/] {fnames}\n"
-            f"[dim]Click a file to preview | Click a template to load | Up/Down for history[/]\n"
+            f"[dim]Click a file to preview | Click a template to load[/]\n"
+            f"[dim]Up/Down: command history | Tab: autocomplete[/]\n"
         ))
         self.query_one("#pg-input", Input).focus()
 
@@ -857,6 +932,60 @@ class PlaygroundScreen(BaseScreen):
                 inp.value = tmpl["command"]
                 inp.focus()
 
+    # ── History / autocomplete ────────────────────────────────
+
+    def on_unmount(self) -> None:
+        """Close the recording session when leaving the Command Lab."""
+        try:
+            self.app.playground_engine.close_session()
+        except Exception as e:
+            logger.warning(f"Could not close playground session: {e}")
+
+    def _input_focused(self) -> Input | None:
+        inp = self.query_one("#pg-input", Input)
+        return inp if inp.has_focus else None
+
+    def action_history_prev(self) -> None:
+        inp = self._input_focused()
+        if inp is None:
+            return
+        previous = self.app.playground_engine.history_up()
+        if previous:
+            inp.value = previous
+            inp.cursor_position = len(previous)
+
+    def action_history_next(self) -> None:
+        inp = self._input_focused()
+        if inp is None:
+            return
+        nxt = self.app.playground_engine.history_down()
+        inp.value = nxt or ""
+        inp.cursor_position = len(inp.value)
+
+    def action_complete(self) -> None:
+        """Complete the current command, or list the candidates.
+
+        Tab keeps its normal "focus the next widget" meaning everywhere except
+        inside a non-empty command box, so the rest of the screen stays
+        keyboard-navigable.
+        """
+        inp = self._input_focused()
+        if inp is None or not inp.value.strip():
+            self.app.action_focus_next()
+            return
+        suggestions = self.app.playground_engine.autocomplete(inp.value)
+        if not suggestions:
+            self.app.show_notification("No completions", severity="warning")
+            return
+        if len(suggestions) == 1:
+            inp.value = suggestions[0]
+            inp.cursor_position = len(inp.value)
+            return
+        output = self.query_one("#pg-output", RichLog)
+        output.write(Text.from_markup(
+            "[dim]suggestions:[/] " + "  ".join(f"[cyan]{s}[/]" for s in suggestions)
+        ))
+
     @on(Input.Submitted, "#pg-input")
     @on(Button.Pressed, "#pg-run")
     def run_command(self, event=None) -> None:
@@ -868,19 +997,26 @@ class PlaygroundScreen(BaseScreen):
         output = self.query_one("#pg-output", RichLog)
         output.write(Text.from_markup(f"\n[cyan]$ {command}[/]"))
 
-        result = self.app.playground_engine.execute(command, context="playground")
+        result = self.app.playground_engine.submit_command(command, context="playground")
 
-        if result.blocked:
-            output.write(Text.from_markup(
-                f"[red]BLOCKED:[/] {result.block_reason}"
-            ))
-        elif result.stdout:
+        if result.stdout:
             output.write(result.stdout.rstrip())
-        if result.stderr and not result.blocked:
+        if result.stderr:
             output.write(Text.from_markup(f"[red]{result.stderr.rstrip()}[/]"))
 
+        # A short reference card for the base command — this is a learning
+        # tool, and the help data was previously unreachable from the UI.
+        base = command.split()[0]
+        help_data = self.app.playground_engine.get_command_help(base)
+        flags = help_data.get("common_flags", [])
+        if flags:
+            output.write(Text.from_markup(
+                f"[dim]{base}: {help_data['description']}[/]\n"
+                + "  ".join(f"[cyan]{flag}[/][dim]={desc}[/]" for flag, desc in flags[:5])
+            ))
+
         dur_text = f"[grey50]({result.duration_ms:.0f}ms)[/]"
-        if result.exit_code != 0 and not result.blocked:
+        if result.exit_code != 0:
             output.write(Text.from_markup(
                 f"[yellow]exit {result.exit_code}[/] {dur_text}"
             ))
@@ -933,6 +1069,36 @@ class NotesScreen(BaseScreen):
 
     def on_mount(self) -> None:
         self._refresh_notes()
+
+    def _has_unsaved_changes(self) -> bool:
+        try:
+            title = self.query_one("#note-title", Input).value.strip()
+            content = self.query_one("#note-content", TextArea).text
+        except Exception:
+            return False
+        if not title and not content.strip():
+            return False
+        if self._current_note_id is None:
+            return True
+        note = next((n for n in self.app.db.get_notes()
+                     if n["id"] == self._current_note_id), None)
+        if not note:
+            return True
+        return title != note["title"] or content != note["content"]
+
+    def action_go_back(self) -> None:
+        """Confirm before leaving with unsaved edits."""
+        if not self._has_unsaved_changes():
+            self.app.action_go_dashboard()
+            return
+
+        def handle(confirmed: bool | None) -> None:
+            if confirmed:
+                self.app.action_go_dashboard()
+
+        self.app.push_screen(
+            ConfirmModal("Discard unsaved note changes?"), handle
+        )
 
     def _refresh_notes(self, search: str = "") -> None:
         self._load_notes_async(search)
@@ -1007,13 +1173,17 @@ class NotesScreen(BaseScreen):
         title   = self.query_one("#note-title", Input).value
         content = self.query_one("#note-content", TextArea).text
         if title and content:
-            path = Path.home() / f"{title.replace(' ','_')}.md"
+            export_dir = Path.home() / "ShellMentor_Exports"
+            export_dir.mkdir(exist_ok=True)
+            # The title is user input: strip path separators so a note called
+            # "../.bashrc" cannot be written outside the export directory.
+            safe = re.sub(r"[^A-Za-z0-9._-]+", "_", title).strip("._") or "note"
+            path = export_dir / f"{safe[:80]}.md"
             path.write_text(f"# {title}\n\n{content}")
             self.app.show_notification(f"Exported to {path}", severity="information")
 
 
 
-# ──────────────────────── Screen: Analytics ────────────────────────
 # ──────────────────────── Screen: Analytics ────────────────────────
 
 class AnalyticsScreen(BaseScreen):
@@ -1056,17 +1226,18 @@ class AnalyticsScreen(BaseScreen):
     """
 
     def on_mount(self) -> None:
-        self._render_analytics()
+        self.run_worker(self._render_analytics(), exclusive=True)
 
-    def _render_analytics(self) -> None:
-        """Render analytics dashboard synchronously."""
+    async def _render_analytics(self) -> None:
+        """Render analytics dashboard asynchronously."""
         scroll = self.query_one("#analytics-scroll", ScrollableContainer)
-        scroll.remove_children()
+        await scroll.remove_children()
 
         # Get data
         stats = self.app.progress_engine.get_dashboard_stats()
         analytics = self.app.db.get_analytics_summary()
         ch_stats = self.app.challenge_engine.get_challenge_stats()
+        user = self.app.db.get_user()
         acc = stats.get("accuracy", 0) or 0
         acc_color = "green" if acc >= 70 else "yellow" if acc >= 40 else "red"
 
@@ -1148,9 +1319,19 @@ class AnalyticsScreen(BaseScreen):
         track_content = []
         per_track = analytics.get("lessons_per_track", [])
         if per_track:
+            track_name_map = {
+                "linux_fundamentals": "Linux Fundamentals",
+                "text_processing": "Text Processing",
+                "regex_academy": "Regex Academy",
+                "shell_pipelines": "Shell Pipelines",
+                "log_analysis": "Log Analysis",
+                "vlsi_track": "VLSI Text Processing",
+            }
             for td in per_track:
+                track_id = td.get("track_id", "?")
+                track_name = track_name_map.get(track_id, track_id)
                 track_content.append(
-                    f"  [cyan]{str(td.get('track_id', '?')):<25}[/]  [gold1]{td.get('n', 0)} lessons[/]"
+                    f"  [cyan]{track_name:<25}[/]  [gold1]{td.get('n', 0)} lessons[/]"
                 )
         else:
             track_content.append("  [grey50]No lessons completed yet.[/]")
@@ -1158,19 +1339,59 @@ class AnalyticsScreen(BaseScreen):
         widgets.append(Static("\n".join(track_content)))
         widgets.append(Static(""))
 
-        scroll.mount(*widgets)
+        # Weekly Activity Card
+        weekly = analytics.get("weekly_activity", [])
+        if weekly:
+            widgets.append(Container(
+                Static("  WEEKLY ACTIVITY", classes="analytics-title"),
+                classes="analytics-card"
+            ))
+            weekly_content = []
+            max_cmds = max((d.get("n", 0) for d in weekly), default=1) or 1
+            for day in weekly:
+                day_str = day.get("day", "?")
+                n = day.get("n", 0)
+                bar_len = int((n / max_cmds) * 20)
+                bar = "█" * bar_len + "░" * (20 - bar_len)
+                weekly_content.append(
+                    f"  [grey50]{day_str[-5:]:>5}[/]  [cyan]{bar}[/]  [grey50]{n} cmds[/]"
+                )
+            widgets.append(Static("\n".join(weekly_content)))
+            widgets.append(Static(""))
+
+        # Challenge Performance Card
+        ch_perf = analytics.get("challenge_stats", {})
+        avg_t = analytics.get("avg_solve_time", {}) or {}
+        # SQL AVG()/MIN() over no rows yield NULL -> None, which cannot be
+        # formatted with :.1f.
+        avg_solve = avg_t.get("avg_time") or 0.0
+        best_solve = avg_t.get("best_time") or 0.0
+        widgets.append(Container(
+            Static("  CHALLENGE PERFORMANCE", classes="analytics-title"),
+            Static(
+                f"\n  [dim]Challenges solved:[/]       [green]{ch_perf.get('solved', 0)}[/]\n"
+                f"  [dim]Challenges attempted:[/]    [yellow]{ch_perf.get('attempted', 0)}[/]\n"
+                f"  [dim]Average solve time:[/]      [cyan]{avg_solve:.1f}s[/]\n"
+                f"  [dim]Best solve time:[/]         [gold1]{best_solve:.1f}s[/]\n"
+            ),
+            classes="analytics-card"
+        ))
+
+        # Level Progress Card
+        widgets.append(Container(
+            Static("  LEVEL PROGRESS", classes="analytics-title"),
+            Static(
+                f"\n  [dim]Current level:[/]           [cyan]{user.get('level', 1)}[/]\n"
+                f"  [dim]Rank:[/]                    [gold1]{user.get('rank_title', 'Terminal Novice')}[/]\n"
+                f"  [dim]Total XP:[/]                [gold1]{user.get('xp', 0):,}[/]\n"
+                f"  [dim]Challenge streak:[/]        [orange1]{user.get('challenge_streak', 0)}[/]\n"
+            ),
+            classes="analytics-card"
+        ))
+
+        await scroll.mount(*widgets)
 
 
-
-# ──────────────────────── Screen: Settings ────────────────────────
-
-# ──────────────────────── Screen: Settings ────────────────────────
-
-# ──────────────────────── Screen: Settings ────────────────────────
-
-# ──────────────────────── Screen: Settings ────────────────────────
-
-# ──────────────────────── Screen: Settings ────────────────────────
 
 # ──────────────────────── Screen: Settings ────────────────────────
 
@@ -1356,6 +1577,8 @@ class SettingsScreen(BaseScreen):
             ("Ctrl+A", "Achievements"),
             ("Ctrl+N", "Notes"),
             ("Ctrl+R", "Analytics"),
+            ("Ctrl+T", "Settings"),
+            ("Ctrl+U", "Git Space"),
             ("Ctrl+D", "Dashboard"),
             ("Ctrl+P", "Command Palette"),
             ("Ctrl+Q", "Quit"),
@@ -1371,6 +1594,19 @@ class SettingsScreen(BaseScreen):
         widget_list.append(Container(*rows, classes="shortcut-grid"))
         widget_list.append(Static(""))
         widget_list.append(Rule())
+
+        # ── ABOUT ──
+        widget_list.append(Static("\n  [bold cyan]ℹ  ABOUT[/]", classes="settings-section-header"))
+        widget_list.append(Static(""))
+        widget_list.append(Static(
+            f"  [bold cyan]{APP_NAME}[/]  [dim]v{APP_VERSION}[/]\n"
+            f"  Professional Linux Command-Line Learning Platform\n"
+            f"  Built with Python, Textual, and Rich\n"
+            f"  Created by Kunal Saraswat\n"
+            f"  Repository: github.com/bitWithKunal/ShellMentor",
+            classes="settings-hint"
+        ))
+        widget_list.append(Static(""))
 
         # Mount all widgets in one awaited call to avoid DuplicateId race
         await scroll.mount(*widget_list)
@@ -1555,14 +1791,14 @@ class GitHubSpaceScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="gh-layout"):
             with Vertical(id="gh-sidebar"):
-                yield Static("GIT COMMANDS")
-                yield Button("git init",        id="git-init",      variant="primary")
-                yield Button("git status",      id="git-status",    variant="default")
-                yield Button("git add .",       id="git-add",       variant="default")
-                yield Button("git commit",      id="git-commit",    variant="default")
-                yield Button("git push",        id="git-push",      variant="success")
-                yield Button("git pull",        id="git-pull",      variant="warning")
-                yield Button("git log",         id="git-log",       variant="default")
+                yield Static("GIT COMMAND GUIDES")
+                yield Button("Show git init",   id="git-init",      variant="primary")
+                yield Button("Show git status", id="git-status",    variant="default")
+                yield Button("Show git add .",  id="git-add",       variant="default")
+                yield Button("Show git commit", id="git-commit",    variant="default")
+                yield Button("Show git push",   id="git-push",      variant="success")
+                yield Button("Show git pull",   id="git-pull",      variant="warning")
+                yield Button("Show git log",    id="git-log",       variant="default")
                 yield Rule()
                 yield Static("REPO PATH")
                 yield Input(value=self._repo_path, id="repo-path-input")
@@ -1588,85 +1824,48 @@ class GitHubSpaceScreen(BaseScreen):
         output.write(Text.from_markup(
             f"[bold]Git Workspace[/]  [dim]{self._repo_path}[/]\n"
             f"[dim]{'-' * 50}[/]\n"
-            f"[dim]Click a command button to run it.[/]\n"
+            "[dim]Commands are displayed for you to run in your own terminal.[/]\n"
         ))
 
-    def _run_git(self, args: list[str], capture_output: bool = True) -> tuple[int, str, str]:
-        import subprocess
-        try:
-            result = subprocess.run(
-                ["git"] + args,
-                cwd=self._repo_path,
-                capture_output=capture_output,
-                text=True,
-                timeout=30,
-            )
-            return result.returncode, result.stdout, result.stderr
-        except FileNotFoundError:
-            return 127, "", "git: command not found. Install git first."
-        except subprocess.TimeoutExpired:
-            return 124, "", "git command timed out after 30s."
-        except Exception as e:
-            return 1, "", str(e)
-
-    def _show_output(self, cmd: str, rc: int, stdout: str, stderr: str) -> None:
+    def _show_command(self, cmd: str) -> None:
         output = self.query_one("#gh-output", RichLog)
-        color = "green" if rc == 0 else "red"
-        output.write(Text.from_markup(f"\n[cyan]$ {cmd}[/]"))
-        if stdout.strip():
-            output.write(stdout.rstrip())
-        if stderr.strip():
-            output.write(Text.from_markup(f"[red]{stderr.rstrip()}[/]"))
-        if rc != 0:
-            output.write(Text.from_markup(f"[red]exit {rc}[/]"))
-        else:
-            output.write(Text.from_markup("[green]OK[/]"))
+        output.write(Text.from_markup(
+            f"\n[cyan]$ {cmd}[/]\n"
+            "[yellow]Not executed by ShellMentor.[/] Copy this command into a terminal you control."
+        ))
 
     @on(Button.Pressed, "#git-init")
     def git_init(self) -> None:
-        from pathlib import Path as _P
-        _P(self._repo_path).mkdir(parents=True, exist_ok=True)
-        rc, out, err = self._run_git(["init"])
-        self._show_output("git init", rc, out, err)
+        self._show_command("git init")
 
     @on(Button.Pressed, "#git-status")
     def git_status(self) -> None:
-        rc, out, err = self._run_git(["status"])
-        self._show_output("git status", rc, out, err)
+        self._show_command("git status")
 
     @on(Button.Pressed, "#git-add")
     def git_add(self) -> None:
-        rc, out, err = self._run_git(["add", "."])
-        self._show_output("git add .", rc, out, err)
+        self._show_command("git add .")
 
     @on(Button.Pressed, "#git-commit")
     def git_commit(self) -> None:
-        from datetime import datetime
-        msg = f"ShellMentor portfolio update — {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-        rc, out, err = self._run_git(["commit", "-m", msg])
-        self._show_output(f'git commit -m "{msg}"', rc, out, err)
+        self._show_command('git commit -m "Describe your learning progress"')
 
     @on(Button.Pressed, "#git-push")
     def git_push(self) -> None:
-        rc, out, err = self._run_git(["push"])
-        self._show_output("git push", rc, out, err)
+        self._show_command("git push")
 
     @on(Button.Pressed, "#git-pull")
     def git_pull(self) -> None:
-        rc, out, err = self._run_git(["pull"])
-        self._show_output("git pull", rc, out, err)
+        self._show_command("git pull")
 
     @on(Button.Pressed, "#git-log")
     def git_log(self) -> None:
-        rc, out, err = self._run_git(["log", "--oneline", "-20"])
-        self._show_output("git log --oneline -20", rc, out, err)
+        self._show_command("git log --oneline -20")
 
     @on(Button.Pressed, "#set-repo-path")
     def set_repo_path(self) -> None:
         new_path = self.query_one("#repo-path-input", Input).value.strip()
         if new_path:
             self._repo_path = new_path
-            from pathlib import Path as _P
-            _P(new_path).mkdir(parents=True, exist_ok=True)
             output = self.query_one("#gh-output", RichLog)
-            output.write(Text.from_markup(f"[green]Repo path set to:[/] {new_path}"))
+            output.write(Text.from_markup(f"[green]Reference path set to:[/] {new_path}"))

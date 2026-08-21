@@ -13,49 +13,22 @@ Shared widgets, BaseScreen and modals live in ui_core.py.
 from __future__ import annotations
 
 import logging
-import time
-from pathlib import Path
-from typing import Any
 
 from rich.text import Text
-from rich.panel import Panel
-from rich.table import Table
-from rich.columns import Columns
-from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
-from rich.syntax import Syntax
-from rich.markdown import Markdown
 
 from textual import on, work
-from textual.app import App, ComposeResult
+from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import (
-    Container, Horizontal, Vertical, ScrollableContainer, Grid
-)
-from textual.reactive import reactive
-from textual.screen import Screen, ModalScreen
+from textual.containers import Horizontal, Vertical, ScrollableContainer
+from textual.screen import Screen
 from textual.widgets import (
-    Button, DataTable, Footer, Header, Input, Label,
-    ListItem, ListView, Markdown as MarkdownWidget,
-    ProgressBar, RichLog, Rule, Select, Static,
-    TabbedContent, TabPane, Tabs, Tab, TextArea, Tree, Checkbox, RadioButton, RadioSet
+    Button, Footer, Header, Input, Label, ListItem, ListView,
+    RichLog, Rule, Select, Static,
 )
 
-from data_manager import DataManager
-from learning import LearningEngine
-from challenge import ChallengeEngine
-from playground import PlaygroundEngine
-from progress import ProgressEngine, LevelUpEvent, XPEvent
-from utils import (
-    detect_system, SystemInfo, get_install_command,
-    load_yaml, THEMES_DIR, difficulty_icon, difficulty_color,
-    rarity_color, format_xp, format_duration, truncate, APP_VERSION, APP_NAME
-)
+from utils import difficulty_icon, difficulty_color, rarity_color
 
-from ui_core import (
-    NavButton, NavigationSidebar, BaseScreen,
-    XPBar, StatCard, SectionHeader,
-    LevelUpModal, AchievementModal, HintModal, ConfirmModal,
-)
+from ui_core import BaseScreen, HintModal, ConfirmModal
 
 logger = logging.getLogger("shellmentor")
 
@@ -101,6 +74,27 @@ class ChallengesScreen(BaseScreen):
 
     def on_mount(self) -> None:
         self._populate_challenges()
+        self._show_difficulty_suggestion()
+
+    @work(exclusive=True)
+    async def _show_difficulty_suggestion(self) -> None:
+        suggestion = self.app.challenge_engine.suggest_difficulty()
+        sidebar = self.query_one("#ch-sidebar", Vertical)
+        # query_one() raises when there is no match, so use query() here.
+        for old in self.query("#diff-suggestion"):
+            await old.remove()
+        if not suggestion:
+            return
+        if suggestion == "up":
+            await sidebar.mount(
+                Static("  [green]>> Try harder challenges![/]", id="diff-suggestion"),
+                before=self.query_one("#ch-list"),
+            )
+        elif suggestion == "down":
+            await sidebar.mount(
+                Static("  [yellow]<< Try easier challenges[/]", id="diff-suggestion"),
+                before=self.query_one("#ch-list"),
+            )
 
     def _populate_challenges(self, difficulty: str = "") -> None:
         self._load_challenges_async(difficulty)
@@ -110,7 +104,7 @@ class ChallengesScreen(BaseScreen):
         ch_list = self.query_one("#ch-list", ListView)
         items = []
         for ch in self.app.challenge_engine.get_challenges(difficulty=difficulty):
-            status = "[X]" if ch["solved"] else difficulty_icon(ch["difficulty"])
+            status = "✔" if ch["solved"] else difficulty_icon(ch["difficulty"])
             label = (
                 f"  {status} {ch['title']}  "
                 f"[gold1]+{ch['xp_reward']}[/]"
@@ -149,7 +143,7 @@ class ChallengesScreen(BaseScreen):
 
         await detail.mount(Static(
             f"\n  [bold cyan]{ch['title']}[/]"
-            f"  {'[green][SOLVED][/]' if solved else ''}\n"
+            f"  {'[green]✔ SOLVED[/]' if solved else ''}\n"
             f"  [{diff_color}]{difficulty_icon(ch['difficulty'])} {ch['difficulty']}[/]  "
             f"[gold1]+{ch['xp_reward']} XP[/]  "
             f"[grey50]Dataset: {ch['dataset']}[/]\n"
@@ -190,6 +184,7 @@ class ChallengeScreen(Screen):
         yield Header(show_clock=True)
         with Vertical(id="cs-layout"):
             yield ScrollableContainer(id="cs-info")
+            yield Static("", id="cs-timer")
             yield Rule()
             yield RichLog(id="cs-output", highlight=True, markup=True, auto_scroll=True)
             with Horizontal(id="cs-input-row"):
@@ -199,6 +194,7 @@ class ChallengeScreen(Screen):
             with Horizontal(id="cs-button-row"):
                 yield Button("Submit", id="cs-submit", variant="success")
                 yield Button("Hint", id="cs-hint", variant="warning")
+                yield Button("Retry", id="cs-retry", variant="default")
                 yield Button("Main Menu", id="cs-mainmenu", variant="default")
                 yield Button("Quit", id="cs-quit", variant="error")
         yield Footer()
@@ -253,6 +249,7 @@ class ChallengeScreen(Screen):
             self.app.pop_screen()
             return
 
+        self._timer = None
         ch = self._active.challenge
         info = self.query_one("#cs-info", ScrollableContainer)
         info.mount(Static(
@@ -263,12 +260,60 @@ class ChallengeScreen(Screen):
             f"{len(ch.get('hints', []))} hints available[/]\n"
         ))
 
+        # Start countdown timer if challenge has time limit
+        if self._active.time_limit > 0:
+            self._refresh_time_display()
+            self._timer = self.set_interval(1.0, self._tick_timer)
+
         output = self.query_one("#cs-output", RichLog)
         output.write(Text.from_markup(
             f"[grey50]Workspace file: [cyan]{ch['dataset']}[/] is ready.[/]\n"
             f"[grey50]Type your command, press Run to test, then Submit when ready.[/]\n"
         ))
         self.query_one("#cs-input", Input).focus()
+
+    def _tick_timer(self) -> None:
+        if not self._active:
+            return
+        if self._active.is_expired:
+            if self._timer:
+                self._timer.stop()
+            self._on_timeout()
+            return
+        self._refresh_time_display()
+
+    def _refresh_time_display(self) -> None:
+        if not self._active or self._active.time_limit <= 0:
+            return
+        remaining = self._active.time_remaining
+        mins, secs = divmod(int(remaining), 60)
+        color = "red" if remaining < 30 else "yellow" if remaining < 60 else "green"
+        timer = self.query_one("#cs-timer", Static)
+        timer.update(Text.from_markup(
+            f"  [{color}]TIME REMAINING: {mins}:{secs:02d}[/{color}]"
+        ))
+
+    def on_unmount(self) -> None:
+        """Stop the countdown when the screen is dismissed."""
+        timer = getattr(self, "_timer", None)
+        if timer:
+            timer.stop()
+            self._timer = None
+
+    def _on_timeout(self) -> None:
+        output = self.query_one("#cs-output", RichLog)
+        output.write(Text.from_markup(
+            f"\n[red]TIME'S UP![/] Challenge auto-abandoned.\n"
+        ))
+        # The session is over — no more submissions against a dead challenge.
+        self.query_one("#cs-input", Input).disabled = True
+        self.query_one("#cs-submit", Button).disabled = True
+        info = self.app.challenge_engine.abandon_challenge()
+        if info and info.get("solution"):
+            output.write(Text.from_markup(
+                f"[bold]Solution:[/] {info['solution']}\n"
+            ))
+        self.app.show_notification("Time's up! Challenge abandoned.", severity="warning")
 
     @on(Input.Submitted, "#cs-input")
     @on(Button.Pressed, "#cs-run")
@@ -281,14 +326,12 @@ class ChallengeScreen(Screen):
         if self._active:
             self._active.command_history.append(command)
 
-        result = self.app.playground_engine.execute(command, context="challenge")
+        result = self.app.playground_engine.submit_command(command, context="challenge")
         output = self.query_one("#cs-output", RichLog)
         output.write(Text.from_markup(f"[cyan]$ {command}[/]"))
-        if result.blocked:
-            output.write(Text.from_markup(f"[red]BLOCKED: {result.block_reason}[/]"))
-        elif result.stdout:
+        if result.stdout:
             output.write(result.stdout.rstrip())
-        if result.stderr and not result.blocked:
+        if result.stderr:
             output.write(Text.from_markup(f"[red]{result.stderr.rstrip()}[/]"))
 
     @on(Button.Pressed, "#cs-submit")
@@ -305,18 +348,13 @@ class ChallengeScreen(Screen):
             self.app.show_notification("Enter a command first", severity="warning")
             return
 
-        result = self.app.playground_engine.execute(command, context="challenge")
-        submit_result = self.app.challenge_engine.submit_challenge(result.output)
+        # submit_challenge() records the attempt itself; recording it here as
+        # well double-counted every submission in "Commands run".
+        submit_result = self.app.challenge_engine.submit_challenge(command)
 
         output = self.query_one("#cs-output", RichLog)
         if submit_result["solved"]:
             xp = submit_result["xp_earned"]
-            self.app.progress_engine.complete_challenge(
-                self.challenge_id, xp,
-                submit_result["hints_used"],
-                submit_result["elapsed"],
-                command
-            )
             output.write(Text.from_markup(
                 f"\n[green]CHALLENGE SOLVED![/] [gold1]+{xp} XP[/]\n"
                 f"[grey50]Time: {submit_result['elapsed']:.1f}s  "
@@ -341,13 +379,53 @@ class ChallengeScreen(Screen):
         else:
             self.app.show_notification("No more hints available", severity="warning")
 
+    @on(Button.Pressed, "#cs-retry")
+    def retry_challenge(self) -> None:
+        self._active = self.app.challenge_engine.start_challenge(self.challenge_id)
+        if not self._active:
+            return
+        # Clear output and reset
+        output = self.query_one("#cs-output", RichLog)
+        output.clear()
+        ch = self._active.challenge
+        output.write(Text.from_markup(
+            f"[grey50]Challenge restarted. Workspace: [cyan]{ch['dataset']}[/] ready.[/]\n"
+        ))
+        inp = self.query_one("#cs-input", Input)
+        inp.disabled = False
+        inp.value = ""
+        inp.focus()
+        self.query_one("#cs-submit", Button).disabled = False
+        # Restart timer if applicable
+        if self._timer:
+            self._timer.stop()
+        if self._active.time_limit > 0:
+            self._refresh_time_display()
+            self._timer = self.set_interval(1.0, self._tick_timer)
+        else:
+            self.query_one("#cs-timer", Static).update("")
+
     def action_abandon(self) -> None:
-        self.app.challenge_engine.abandon_challenge()
-        self.app.pop_screen()
+        def handle_confirm(confirmed: bool | None) -> None:
+            if confirmed:
+                info = self.app.challenge_engine.abandon_challenge()
+                if info and info.get("solution"):
+                    output = self.query_one("#cs-output", RichLog)
+                    output.write(Text.from_markup(
+                        f"\n[bold]Solution:[/] {info['solution']}\n"
+                    ))
+                self.app.pop_screen()
+
+        self.app.push_screen(ConfirmModal("Abandon this challenge? Progress will be lost."), handle_confirm)
 
     @on(Button.Pressed, "#cs-mainmenu")
     def go_main_menu(self) -> None:
-        self.app.challenge_engine.abandon_challenge()
+        info = self.app.challenge_engine.abandon_challenge()
+        if info and info.get("solution"):
+            output = self.query_one("#cs-output", RichLog)
+            output.write(Text.from_markup(
+                f"\n[bold]Solution:[/] {info['solution']}\n"
+            ))
         self.app.action_go_dashboard()
 
     @on(Button.Pressed, "#cs-quit")
@@ -414,7 +492,7 @@ class MissionsScreen(BaseScreen):
             done = m.get("completed", False)
             stages = m.get("stages_done", 0)
             total = m.get("total_stages", 0)
-            status = "[X]" if done else f"[{stages}/{total}]"
+            status = "✔ complete" if done else f"{stages}/{total} stages"
             mission_title = m.get("title", m.get("name", "Unknown Mission"))
             label = f"  {mission_title}  [grey50]{status}[/]"
             ms_list.append(ListItem(Label(Text.from_markup(label)), id=f"ms-{m['id']}"))
@@ -426,12 +504,16 @@ class MissionsScreen(BaseScreen):
             self._show_mission_detail(mid)
 
     def _show_mission_detail(self, mission_id: str) -> None:
+        self._load_mission_detail_async(mission_id)
+
+    @work(exclusive=True)
+    async def _load_mission_detail_async(self, mission_id: str) -> None:
         mission = self.app.challenge_engine.get_mission(mission_id)
         if not mission:
             return
 
         detail = self.query_one("#ms-detail", ScrollableContainer)
-        detail.remove_children()
+        await detail.remove_children()
 
         stages = mission.get("stages", [])
         completed_stages = self.app.db.get_mission_progress(mission_id)
@@ -448,7 +530,7 @@ class MissionsScreen(BaseScreen):
                 f"  {mission_desc}\n\n"
                 f"  [grey50]{difficulty_icon(mission_difficulty)} {mission_difficulty}  "
                 f"|  {len(stages)} stages  "
-                f"|  [gold1]+{mission_xp} XP total[/]  "
+                f"|  [gold1]+{mission_xp} XP total (awarded per stage)[/]  "
                 f"|  Badge: {mission_badge}[/]\n"
             ),
             Rule(),
@@ -457,7 +539,7 @@ class MissionsScreen(BaseScreen):
 
         for stage in stages:
             done = stage.get("stage", 0) <= completed_stages
-            icon = "[X]" if done else "[ ]"
+            icon = "✔" if done else "○"
             stage_title = stage.get("title", f"Stage {stage.get('stage', '?')}")
             stage_xp = stage.get("xp", 0)
             stage_objective = stage.get("objective", "")
@@ -467,7 +549,7 @@ class MissionsScreen(BaseScreen):
                 f"      [grey50]{stage_objective}[/]\n"
             ))
 
-        detail.mount(*widgets)
+        await detail.mount(*widgets)
         self.app._selected_mission = mission_id
 
     @on(Button.Pressed, "#ms-start")
@@ -574,8 +656,12 @@ class MissionScreen(Screen):
         self.query_one("#mission-input", Input).focus()
 
     def _update_stage_info(self) -> None:
+        self._load_stage_info_async()
+
+    @work(exclusive=True)
+    async def _load_stage_info_async(self) -> None:
         info = self.query_one("#mission-info", ScrollableContainer)
-        info.remove_children()
+        await info.remove_children()
         stage = self._active.current_stage
         if not stage:
             return
@@ -588,7 +674,7 @@ class MissionScreen(Screen):
         stage_dataset = stage.get("dataset", "")
         stage_xp = stage.get("xp", 0)
 
-        info.mount(Static(
+        await info.mount(Static(
             f"\n  [bold cyan]{mission_title}[/]  "
             f"[grey50]Stage {stage['stage']}/{total}[/]  "
             f"[gold1]{self._active.progress_pct:.0f} percent complete[/]\n\n"
@@ -604,14 +690,12 @@ class MissionScreen(Screen):
         command = inp.value.strip()
         if not command:
             return
-        result = self.app.playground_engine.execute(command, context="mission")
+        result = self.app.playground_engine.submit_command(command, context="mission")
         output = self.query_one("#mission-output", RichLog)
         output.write(Text.from_markup(f"[cyan]$ {command}[/]"))
-        if result.blocked:
-            output.write(Text.from_markup(f"[red]BLOCKED: {result.block_reason}[/]"))
-        elif result.stdout:
+        if result.stdout:
             output.write(result.stdout.rstrip())
-        if result.stderr and not result.blocked:
+        if result.stderr:
             output.write(Text.from_markup(f"[red]{result.stderr.rstrip()}[/]"))
 
     @on(Button.Pressed, "#m-next")
@@ -622,9 +706,15 @@ class MissionScreen(Screen):
             self.app.show_notification("Run a command first", severity="warning")
             return
 
-        result = self.app.playground_engine.execute(command, context="mission")
-        stage_result = self.app.challenge_engine.submit_mission_stage(result.output)
+        stage_result = self.app.challenge_engine.submit_mission_stage(command)
         output = self.query_one("#mission-output", RichLog)
+
+        if not stage_result.get("passed"):
+            output.write(Text.from_markup(
+                f"[yellow]Not quite.[/] {stage_result.get('message', '')}\n"
+                f"[grey50]Press Hint if you are stuck.[/]"
+            ))
+            return
 
         xp = stage_result["xp_earned"]
         self.app.progress_engine.complete_mission_stage(
@@ -639,8 +729,10 @@ class MissionScreen(Screen):
             badge = stage_result.get("badge", "")
             output.write(Text.from_markup(
                 f"\n[bold gold1]MISSION COMPLETE! {badge}[/]\n"
-                f"[gold1]Total XP earned: +{total_xp}[/]\n"
+                f"[gold1]Total XP earned this run: +{total_xp}[/]\n"
             ))
+            # A mission's xp_reward is the *total* of its stage rewards, which
+            # were already granted stage by stage — no extra XP here.
             self.app.progress_engine.complete_mission(self.mission_id, 0)
             self.app.show_notification(f"Mission Complete! {badge}", severity="information")
             self.app.pop_screen()
@@ -722,11 +814,11 @@ class AchievementsScreen(BaseScreen):
         self.app.action_quit()
 
     def on_mount(self) -> None:
-        self._render_achievements()
+        self.run_worker(self._render_achievements(), exclusive=True)
 
-    def _render_achievements(self) -> None:
+    async def _render_achievements(self) -> None:
         scroll = self.query_one("#ach-scroll", ScrollableContainer)
-        scroll.remove_children()
+        await scroll.remove_children()
 
         stats = self.app.progress_engine.get_achievement_stats()
         all_ach = self.app.progress_engine.get_full_achievements_list()
@@ -749,15 +841,16 @@ class AchievementsScreen(BaseScreen):
             ))
             for ach in group:
                 earned = ach["earned"]
-                dim = "" if earned else "grey50"
+                # An empty style name produces "[]...[/]", which is invalid
+                # markup — always emit a real style.
+                body = "bold" if earned else "grey50"
                 widgets.append(Static(
-                    f"  {'[X]' if earned else '[ ]'} "
-                    f"[{dim}]{ach['icon']} [bold]{ach['title']}[/bold]  "
+                    f"  {'✔' if earned else '○'} "
+                    f"[{body}]{ach['icon']} {ach['title']}[/{body}]  "
                     f"[gold1]+{ach.get('xp_reward', 0)} XP[/]  "
                     f"[{color}]{rarity}[/{color}]\n"
-                    f"    {ach['description']}[/{dim}]"
+                    f"    [grey50]{ach['description']}[/grey50]"
                 ))
 
-        scroll.mount(*widgets)
-
+        await scroll.mount(*widgets)
 

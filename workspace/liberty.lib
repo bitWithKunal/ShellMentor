@@ -1,0 +1,152 @@
+library (NangateOpenCellLibrary) {
+
+  cell (AND2_X1) {
+    area: 4.263000;
+    cell_leakage_power: 0.025309;
+    cell_footprint: and2;
+    cell_size: 1;
+    pg_pin (VDD) {
+      voltage_name: VDD;
+      pg_type: primary;
+      direction: inout;
+      voltage_map: VDD;
+    }
+    pg_pin (VSS) {
+      voltage_name: VSS;
+      pg_type: primary;
+      direction: inout;
+      voltage_map: VSS;
+    }
+    pin (A) {
+      direction: input;
+      capacitance: 0.006361;
+      max_transition: 0.150;
+      timing () {
+        related_pin: B;
+        cell_rise: 0.152670;
+        cell_fall: 0.163840;
+        rise_transition: 0.082340;
+        fall_transition: 0.078950;
+      }
+    }
+    pin (B) {
+      direction: input;
+      capacitance: 0.006361;
+      max_transition: 0.150;
+      timing () {
+        related_pin: A;
+        cell_rise: 0.152670;
+        cell_fall: 0.163840;
+        rise_transition: 0.082340;
+        fall_transition: 0.078950;
+      }
+    }
+    pin (ZN) {
+      direction: output;
+      capacitance: 0.000000;
+      max_capacitance: 0.107200;
+      max_transition: 0.150;
+      timing () {
+        related_pin: A;
+        cell_rise: 0.093520;
+        cell_fall: 0.102830;
+        rise_transition: 0.082340;
+        fall_transition: 0.078950;
+      }
+      timing () {
+        related_pin: B;
+        cell_rise: 0.093520;
+        cell_fall: 0.102830;
+        rise_transition: 0.082340;
+        fall_transition: 0.078950;
+      }
+    }
+  }
+
+  cell (OR2_X1) {
+    area: 4.263000;
+    cell_leakage_power: 0.025632;
+    cell_footprint: or2;
+    pg_pin (VDD) { voltage_name: VDD; pg_type: primary; direction: inout; voltage_map: VDD; }
+    pg_pin (VSS) { voltage_name: VSS; pg_type: primary; direction: inout; voltage_map: VSS; }
+    pin (A) { direction: input; capacitance: 0.005201; max_transition: 0.150;
+      timing () { related_pin: B; cell_rise: 0.158760; cell_fall: 0.169230; rise_transition: 0.085670; fall_transition: 0.081230; }
+    }
+    pin (B) { direction: input; capacitance: 0.005201; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.158760; cell_fall: 0.169230; rise_transition: 0.085670; fall_transition: 0.081230; }
+    }
+    pin (ZN) { direction: output; capacitance: 0.000000; max_capacitance: 0.107200; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.098760; cell_fall: 0.107890; rise_transition: 0.085670; fall_transition: 0.081230; }
+      timing () { related_pin: B; cell_rise: 0.098760; cell_fall: 0.107890; rise_transition: 0.085670; fall_transition: 0.081230; }
+    }
+  }
+
+  cell (INV_X1) {
+    area: 2.131000;
+    cell_leakage_power: 0.012654;
+    cell_footprint: inv;
+    pg_pin (VDD) { voltage_name: VDD; pg_type: primary; direction: inout; voltage_map: VDD; }
+    pg_pin (VSS) { voltage_name: VSS; pg_type: primary; direction: inout; voltage_map: VSS; }
+    pin (A) { direction: input; capacitance: 0.003180; max_transition: 0.150;
+      timing () { cell_rise: 0.112340; cell_fall: 0.123450; rise_transition: 0.065430; fall_transition: 0.062340; }
+    }
+    pin (ZN) { direction: output; capacitance: 0.000000; max_capacitance: 0.107200; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.078900; cell_fall: 0.087650; rise_transition: 0.065430; fall_transition: 0.062340; }
+    }
+  }
+
+  cell (DFF_X1) {
+    area: 7.912000;
+    cell_leakage_power: 0.045670;
+    cell_footprint: dff;
+    pg_pin (VDD) { voltage_name: VDD; pg_type: primary; direction: inout; voltage_map: VDD; }
+    pg_pin (VSS) { voltage_name: VSS; pg_type: primary; direction: inout; voltage_map: VSS; }
+    pin (CK) { direction: input; capacitance: 0.012560; clock: true; max_transition: 0.150;
+      timing () { timing_type: hold; cell_rise: 0.051230; cell_fall: 0.058900; }
+    }
+    pin (D) { direction: input; capacitance: 0.004230; max_transition: 0.150;
+      timing () { related_pin: CK; timing_type: setup; cell_rise: 0.123450; cell_fall: 0.134560; }
+    }
+    pin (Q) { direction: output; capacitance: 0.000000; max_capacitance: 0.107200; max_transition: 0.150;
+      timing () { related_pin: CK; timing_type: rise_edge; cell_rise: 0.234560; cell_fall: 0.245670; rise_transition: 0.098760; fall_transition: 0.095430; }
+    }
+  }
+
+  cell (MUX2_X1) {
+    area: 5.327000;
+    cell_leakage_power: 0.032145;
+    cell_footprint: mux2;
+    pg_pin (VDD) { voltage_name: VDD; pg_type: primary; direction: inout; voltage_map: VDD; }
+    pg_pin (VSS) { voltage_name: VSS; pg_type: primary; direction: inout; voltage_map: VSS; }
+    pin (A) { direction: input; capacitance: 0.006230; max_transition: 0.150;
+      timing () { related_pin: S; cell_rise: 0.187650; cell_fall: 0.198760; rise_transition: 0.092340; fall_transition: 0.089870; }
+    }
+    pin (B) { direction: input; capacitance: 0.006230; max_transition: 0.150;
+      timing () { related_pin: S; cell_rise: 0.176540; cell_fall: 0.187650; rise_transition: 0.089870; fall_transition: 0.087650; }
+    }
+    pin (S) { direction: input; capacitance: 0.004120; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.165430; cell_fall: 0.176540; rise_transition: 0.088760; fall_transition: 0.086540; }
+    }
+    pin (ZN) { direction: output; capacitance: 0.000000; max_capacitance: 0.107200; max_transition: 0.150;
+      timing () { related_pin: S; cell_rise: 0.123450; cell_fall: 0.134560; rise_transition: 0.088760; fall_transition: 0.086540; }
+    }
+  }
+
+  cell (NAND2_X1) {
+    area: 2.978000;
+    cell_leakage_power: 0.018970;
+    cell_footprint: nand2;
+    pg_pin (VDD) { voltage_name: VDD; pg_type: primary; direction: inout; voltage_map: VDD; }
+    pg_pin (VSS) { voltage_name: VSS; pg_type: primary; direction: inout; voltage_map: VSS; }
+    pin (A) { direction: input; capacitance: 0.005120; max_transition: 0.150;
+      timing () { related_pin: B; cell_rise: 0.134560; cell_fall: 0.145670; rise_transition: 0.078900; fall_transition: 0.076540; }
+    }
+    pin (B) { direction: input; capacitance: 0.005120; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.134560; cell_fall: 0.145670; rise_transition: 0.078900; fall_transition: 0.076540; }
+    }
+    pin (ZN) { direction: output; capacitance: 0.000000; max_capacitance: 0.107200; max_transition: 0.150;
+      timing () { related_pin: A; cell_rise: 0.087650; cell_fall: 0.098760; rise_transition: 0.078900; fall_transition: 0.076540; }
+      timing () { related_pin: B; cell_rise: 0.087650; cell_fall: 0.098760; rise_transition: 0.078900; fall_transition: 0.076540; }
+    }
+  }
+}

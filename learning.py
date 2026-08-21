@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 from utils import DATA_DIR, load_json, difficulty_icon, difficulty_color
 from data_manager import DataManager
@@ -140,19 +139,28 @@ class LearningEngine:
         return lessons
 
     def get_all_track_stats(self) -> list[dict]:
-        """Return tracks with completion stats."""
+        """Return tracks with completion stats and aggregate difficulty."""
         completed = self.db.get_completed_lessons()
+        diff_order = {"beginner": 0, "intermediate": 1, "advanced": 2, "expert": 3, "master": 4}
         result = []
         for track in self.get_tracks():
             lessons = track.get("lessons", [])
             total = len(lessons)
             done = sum(1 for l in lessons if l["id"] in completed)
+            # Average difficulty
+            diffs = [diff_order.get(l.get("difficulty", "beginner"), 0) for l in lessons]
+            avg_idx = int(sum(diffs) / max(len(diffs), 1)) if diffs else 0
+            reverse_map = {v: k for k, v in diff_order.items()}
+            avg_diff = reverse_map.get(avg_idx, "beginner")
             result.append({
                 **track,
                 "lessons_total": total,
                 "lessons_done":  done,
                 "pct_complete":  (done / total * 100) if total > 0 else 0,
-                "locked":        False,  # tracks are always accessible
+                "locked":        False,
+                "avg_difficulty": avg_diff,
+                "difficulty_icon": difficulty_icon(avg_diff),
+                "difficulty_color": difficulty_color(avg_diff),
             })
         return result
 
@@ -163,7 +171,50 @@ class LearningEngine:
         if not lesson:
             return None
         self._active_lesson = LessonSession(lesson=lesson, track_id=track_id)
+        # Resume from saved position
+        saved = self.db.get_lesson_position(lesson_id)
+        if saved > 0:
+            sections = lesson.get("sections", [])
+            if saved < len(sections):
+                self._active_lesson.current_section = saved
         return self._active_lesson
+
+    def get_resume_section(self, lesson_id: str) -> int:
+        """Return saved section index for resume, or 0."""
+        return self.db.get_lesson_position(lesson_id)
+
+    def save_current_position(self) -> None:
+        """Persist current section to DB."""
+        if self._active_lesson:
+            self.db.save_lesson_position(
+                self._active_lesson.lesson["id"],
+                self._active_lesson.current_section,
+                track_id=self._active_lesson.track_id or "",
+            )
+
+    def toggle_bookmark(self, lesson_id: str) -> bool:
+        return self.db.toggle_bookmark(lesson_id)
+
+    def is_bookmarked(self, lesson_id: str) -> bool:
+        return self.db.is_bookmarked(lesson_id)
+
+    def get_bookmarked_lessons(self) -> set[str]:
+        return self.db.get_bookmarked_lessons()
+
+    def estimate_remaining_minutes(self, lesson_id: str) -> float:
+        """Estimate remaining minutes for a lesson."""
+        lesson, _ = self.get_lesson(lesson_id)
+        if not lesson or not self._active_lesson:
+            return 0
+        total_min = lesson.get("estimated_minutes", 15)
+        sections = lesson.get("sections", [])
+        if not sections:
+            return 0
+        elapsed = self._active_lesson.elapsed_seconds / 60
+        done_sections = self._active_lesson.current_section
+        progress_ratio = done_sections / len(sections)
+        remaining = total_min * (1.0 - progress_ratio) - elapsed
+        return max(0, remaining)
 
     @property
     def active_lesson(self) -> LessonSession | None:
@@ -176,6 +227,7 @@ class LearningEngine:
         sections = self._active_lesson.lesson.get("sections", [])
         if self._active_lesson.current_section < len(sections):
             self._active_lesson.current_section += 1
+            self.save_current_position()
             return self._active_lesson.current_section < len(sections)
         return False
 
@@ -215,13 +267,26 @@ class LearningEngine:
 
     def validate_exercise(self, exercise: dict, user_command: str,
                            actual_output: str) -> dict:
-        """Validate a lesson exercise response."""
+        """Validate a lesson exercise response. Checks command structure AND output."""
+        import re as _re
         solution = exercise.get("solution", "")
-        # Structural similarity check (not exact match, check key command elements)
         user_cmd = user_command.strip().lower()
         sol_cmd  = solution.strip().lower()
 
-        # Extract key parts: command name, flags, file
+        # Check 1: output-based validation (regex on stdout)
+        output_pattern = exercise.get("output_pattern", "")
+        if output_pattern and actual_output:
+            try:
+                if _re.search(output_pattern, actual_output, _re.MULTILINE):
+                    return {
+                        "correct": True, "solution": solution,
+                        "hint": exercise.get("hint", ""),
+                        "xp": exercise.get("xp", 20),
+                    }
+            except _re.error:
+                pass
+
+        # Check 2: structural similarity (shlex token overlap)
         import shlex
         try:
             user_tokens = set(shlex.split(user_cmd))

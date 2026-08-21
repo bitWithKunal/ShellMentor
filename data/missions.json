@@ -314,6 +314,225 @@
           "xp": 450
         }
       ]
+    },
+    {
+      "id": "mission_git_admin",
+      "title": "Version Control Specialist",
+      "icon": "🔄",
+      "description": "Set up version control for the company's configuration management. Initialize repos, commit changes, and manage branches.",
+      "difficulty": "beginner",
+      "xp_reward": 500,
+      "badge": "🔄 Git Guardian",
+      "color": "#8b5cf6",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Repo Setup",
+          "objective": "Initialize a git repository and make your first commit with a README file",
+          "dataset": "article.txt",
+          "solution": "git init && git add . && git commit -m 'Initial commit'",
+          "hint": "Use git init to start, git add to stage files, git commit to save",
+          "xp": 100
+        },
+        {
+          "stage": 2,
+          "title": "Log Analysis",
+          "objective": "Show the last 5 git log entries in one-line format",
+          "dataset": "article.txt",
+          "solution": "git log --oneline -5",
+          "hint": "Use --oneline for compact format and -5 to limit output",
+          "xp": 125
+        },
+        {
+          "stage": 3,
+          "title": "Status Check",
+          "objective": "Show the current working tree status",
+          "dataset": "article.txt",
+          "solution": "git status",
+          "hint": "git status shows the current state of the working directory",
+          "xp": 125
+        },
+        {
+          "stage": 4,
+          "title": "Diff Review",
+          "objective": "Show the difference between the working directory and the last commit",
+          "dataset": "article.txt",
+          "solution": "git diff HEAD",
+          "hint": "git diff compares working directory with a reference",
+          "xp": 150
+        }
+      ]
+    },
+    {
+      "id": "mission_sysadmin_pro",
+      "title": "System Administration Pro",
+      "icon": "🖥️",
+      "description": "You're managing a production Linux server. Monitor processes, check disk usage, and manage user accounts.",
+      "difficulty": "intermediate",
+      "xp_reward": 700,
+      "badge": "🖥️ Admin Pro",
+      "color": "#f43f5e",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Process Overview",
+          "objective": "List all running processes and sort by memory usage",
+          "dataset": "server.log",
+          "solution": "ps aux --sort=-%mem | head -20",
+          "hint": "ps aux shows all processes, --sort=-%mem sorts by memory descending",
+          "xp": 125
+        },
+        {
+          "stage": 2,
+          "title": "Disk Usage",
+          "objective": "Show disk usage of the current directory with human-readable sizes",
+          "dataset": "server.log",
+          "solution": "du -sh .",
+          "hint": "du -s shows summary, -h makes sizes human-readable",
+          "xp": 150
+        },
+        {
+          "stage": 3,
+          "title": "File Permissions",
+          "objective": "Show detailed file permissions of all workspace files",
+          "dataset": "employees.csv",
+          "solution": "ls -la",
+          "hint": "ls -la shows all files with detailed permissions",
+          "xp": 150
+        },
+        {
+          "stage": 4,
+          "title": "System Info",
+          "objective": "Display kernel version, hostname, and uptime",
+          "dataset": "server.log",
+          "solution": "uname -r; hostname; uptime",
+          "hint": "uname -r for kernel, hostname for system name, uptime for load",
+          "xp": 150
+        },
+        {
+          "stage": 5,
+          "title": "Cron Job",
+          "objective": "List all cron jobs for the current user",
+          "dataset": "server.log",
+          "solution": "crontab -l",
+          "hint": "crontab -l lists the current user's cron jobs",
+          "xp": 125
+        }
+      ]
+    },
+    {
+      "id": "mission_network_troubleshoot",
+      "title": "Network Troubleshooter",
+      "icon": "🌐",
+      "description": "A web application is experiencing connectivity issues. Investigate the network configuration and diagnose the problem.",
+      "difficulty": "intermediate",
+      "xp_reward": 750,
+      "badge": "🌐 Network Detective",
+      "color": "#14b8a6",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Connection Test",
+          "objective": "Test connectivity to google.com and measure response time",
+          "dataset": "apache.log",
+          "solution": "ping -c 4 google.com",
+          "hint": "ping -c limits the number of packets",
+          "xp": 125
+        },
+        {
+          "stage": 2,
+          "title": "DNS Lookup",
+          "objective": "Resolve the IP address of example.com using dig",
+          "dataset": "apache.log",
+          "solution": "dig example.com +short",
+          "hint": "dig performs DNS lookups, +short shows only the answer",
+          "xp": 150
+        },
+        {
+          "stage": 3,
+          "title": "Port Scan",
+          "objective": "Check if port 80 is open using ss",
+          "dataset": "apache.log",
+          "solution": "ss -tlnp | grep ':80'",
+          "hint": "ss -tlnp shows listening TCP ports",
+          "xp": 175
+        },
+        {
+          "stage": 4,
+          "title": "HTTP Check",
+          "objective": "Fetch the HTTP headers from example.com",
+          "dataset": "apache.log",
+          "solution": "curl -I http://example.com",
+          "hint": "curl -I fetches only headers",
+          "xp": 175
+        },
+        {
+          "stage": 5,
+          "title": "Log Analysis",
+          "objective": "Find all connection errors in the apache.log",
+          "dataset": "apache.log",
+          "solution": "grep -c 'error\\|timeout\\|refused' apache.log",
+          "hint": "Use grep with -c to count matching error patterns",
+          "xp": 125
+        }
+      ]
+    },
+    {
+      "id": "mission_data_pipeline",
+      "title": "Data Pipeline Builder",
+      "icon": "📊",
+      "description": "Build a complete data processing pipeline: extract, transform, analyze, and report on sales data.",
+      "difficulty": "advanced",
+      "xp_reward": 900,
+      "badge": "📊 Data Engineer",
+      "color": "#d946ef",
+      "stages": [
+        {
+          "stage": 1,
+          "title": "Data Preview",
+          "objective": "Show the first 5 lines and the total line count of sales.csv",
+          "dataset": "sales.csv",
+          "solution": "head -5 sales.csv; echo '---'; wc -l sales.csv",
+          "hint": "Use head to preview and wc -l to count lines",
+          "xp": 150
+        },
+        {
+          "stage": 2,
+          "title": "Column Extraction",
+          "objective": "Extract only the product name and total columns from sales.csv",
+          "dataset": "sales.csv",
+          "solution": "cut -d',' -f2,6 sales.csv",
+          "hint": "cut -d',' specifies comma delimiter, -f2,6 selects columns",
+          "xp": 175
+        },
+        {
+          "stage": 3,
+          "title": "Revenue Summary",
+          "objective": "Calculate total revenue from the sales.csv using awk",
+          "dataset": "sales.csv",
+          "solution": "awk -F',' 'NR>1 {sum+=$6} END {printf \"Total: $%.2f\\n\", sum}' sales.csv",
+          "hint": "Sum column 6 (total), skip header with NR>1, print in END block",
+          "xp": 200
+        },
+        {
+          "stage": 4,
+          "title": "Product Breakdown",
+          "objective": "Show total revenue per product, sorted by revenue descending",
+          "dataset": "sales.csv",
+          "solution": "awk -F',' 'NR>1 {rev[$2]+=$6} END {for(p in rev) printf \"$%.2f %s\\n\", rev[p], p}' sales.csv | sort -rn",
+          "hint": "Use awk associative array indexed by product, then sort numerically",
+          "xp": 200
+        },
+        {
+          "stage": 5,
+          "title": "Regional Analysis",
+          "objective": "Count the number of sales per region",
+          "dataset": "sales.csv",
+          "solution": "tail -n +2 sales.csv | cut -d',' -f4 | sort | uniq -c | sort -rn",
+          "hint": "Skip header, extract region column, count unique values",
+          "xp": 175
+        }
+      ]
     }
   ]
 }

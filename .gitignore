@@ -7,7 +7,10 @@ __pycache__/
 *.sqlite
 *.sqlite3
 .DS_Store
-*.log
+# Application logs only — workspace/*.log are curriculum fixtures and must
+# stay tracked (a blanket *.log kept every dataset out of the repository).
+/*.log
+.shellmentor.log
 .env
 .local/
 .vscode/
@@ -15,4 +18,6 @@ __pycache__/
 *.swp
 *.swo
 *.session
-uv.lock
+.coverage
+coverage.xml
+htmlcov/

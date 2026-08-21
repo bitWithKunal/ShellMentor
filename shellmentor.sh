@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ================================================================
-#  ShellMentor v2.0.0  —  Professional Linux Learning Platform
+#  ShellMentor v4.4.0  —  Professional Linux Learning Platform
 #  Author: Kunal Saraswat
 #  LinkedIn: https://www.linkedin.com/in/kunalsaraswat/
 #  GitHub: https://github.com/bitWithKunal/ShellMentor
@@ -15,7 +15,7 @@ PYTHON="${PYTHON:-python3}"
 SHELLMENTOR_CMD="$SCRIPT_DIR/shellmentor.sh"
 
 # Version information
-VERSION="4.1.0"
+VERSION="4.4.0"
 AUTHOR="Kunal Saraswat"
 AUTHOR_EMAIL="kunalsaraswat30@gmail.com"
 LINKEDIN_URL="https://www.linkedin.com/in/kunalsaraswat/"

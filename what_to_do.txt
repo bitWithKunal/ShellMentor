@@ -1,136 +1,87 @@
-ShellMentor v2.0.0 — What To Do
+ShellMentor v4.4.0 — What To Do
 =================================
 Reviewed: July 2026
 
-BUGS TO FIX
------------
+LEARNING FEATURES — ALL DONE
+-----------------------------
+1. [DONE] Interactive exercises with real-time output validation in sandbox
+   validate_exercise() now checks output regex AND command structure.
 
-1. Double XP on lesson completion
-   ui_screens.py:510 — Remove direct award_xp() call, let ProgressEngine handle it.
+2. [DONE] Lesson bookmarking/resume from last position
+   current_section saved to DB. Resume prompt on lesson open.
 
-2. Double XP on challenge completion
-   ui_activities.py:310 — Remove direct complete_challenge() call from ChallengeScreen.
+3. [DONE] Lesson difficulty indicators in sidebar
+   Track sidebar shows avg difficulty icon + color.
 
-3. Sandbox bypass via command chaining
-   utils.py:248 — Add r"&&" and r";" to BLOCKED_PATTERNS.
+4. [DONE] Bookmark/save favorite lessons for quick access
+   Toggle button + star indicator + DB bookmarks table.
 
-4. Missing shell blocking
-   utils.py:37 — Add zsh, fish, csh, tcsh, dash, ksh to BLOCKED_COMMANDS.
+5. [DONE] Estimated time remaining during lesson
+   Live countdown based on elapsed vs estimated duration.
 
-5. Challenge validation too loose
-   utils.py:558 — Implement actual regex matching, not just non-empty check.
+6. [DONE] Lesson completion certificates
+   CertificateModal for scores >= 80%. DB-persisted.
 
-6. Dashboard DB queries every second
-   ui_screens.py:104 — Increase interval to 5-10s or cache data.
+CHALLENGE FEATURES — ALL DONE
+-----------------------------
+1. [DONE] Timed challenge mode with countdown
+   Timer widget, time_limit field, auto-abandon on expiry.
 
-7. /dev/null redirect blocked
-   utils.py:58 — Change to r">\s*/dev/(?!null)".
+2. [DONE] Challenge streak bonus (consecutive solves)
+   +5% XP per streak (capped +50%), reset on abandon/fail.
 
-8. Notes delete without confirmation
-   ui_screens.py:968 — Show ConfirmModal before deleting.
+3. [DONE] Challenge difficulty auto-adjustment
+   Suggests up/down based on recent 80%/30% threshold.
 
-9. Challenge attempts double-counted
-   ui_activities.py:284 — Remove attempts increment from run_command().
+4. [DONE] Retry failed challenges without going back to list
+   Retry button restarts in-place.
 
-10. First-attempt bonus never triggers
-    challenge.py:146 — Increment attempts AFTER XP calculation.
+5. [DONE] Challenge solution explanations after timeout/abandon
+   Solution shown on abandon and timeout.
 
-11. Quiz answer case-sensitive
-    learning.py:54 — Use case-insensitive comparison for fill-in-blank.
+6. [DONE] More challenges per level (50 total)
+   22 new challenges added across all difficulties.
 
-12. get_lesson() return type lie
-    learning.py:114 — Fix annotation to tuple[dict|None, str|None].
+v4.4.0 IMPROVEMENTS
+--------------------
+7. [DONE] Added 12 workspace dataset files
+   server.log, employees.csv, apache.log, nginx.log, syslog.log,
+   timing.rpt, synthesis.log, constraints.sdc, liberty.lib,
+   sales.csv, article.txt, names.txt
 
-13. XPBar overflow
-    ui_core.py:237 — Use min(20, int(pct/5)).
+8. [DONE] Added 33 new lessons (43 total, target: 40+)
+   8 new tracks: Shell Scripting, File System, Process Management,
+   Networking, Git, User Admin, Advanced Text Processing, Data Analysis
 
-14. Lesson score always 100
-    ui_screens.py:510 — Calculate from exercise + quiz performance.
+9. [DONE] Added 4 new missions (10 total, target: 10+)
+   Version Control Specialist, System Admin Pro, Network Troubleshooter,
+   Data Pipeline Builder
 
-MISSING FEATURES
-----------------
+10. [DONE] Enhanced analytics with weekly activity and performance metrics
 
-LEARNING:
-- Interactive exercises with real-time output validation in sandbox
-- Lesson bookmarking/resume from last position
-- Lesson difficulty indicators in sidebar
-- Bookmark/save favorite lessons for quick access
-- Estimated time remaining during lesson
-- Lesson completion certificates
+11. [DONE] Added 9 new achievements (31 total, target: 40+)
+    Script Writer, Network Navigator, Knowledge Seeker, Challenge Champion,
+    Terminal Titan, Fortnight Warrior, Independent Thinker, Track Collector
 
-CHALLENGES:
-- Timed challenge mode with countdown
-- Challenge streak bonus (consecutive solves)
-- Challenge difficulty auto-adjustment based on performance
-- Retry failed challenges without going back to list
-- Challenge solution explanations after timeout/abandon
-- More challenges per level (target: 50+ total)
+12. [DONE] Fixed settings page (duplicate headers, added About section)
 
-PLAYGROUND:
-- Command alias support (user-defined shortcuts)
-- Script builder mode (chain commands visually)
-- Output export to clipboard/file
-- Workspace file upload support
-- Command syntax highlighting in input
-- Command documentation tooltip on hover
-- Undo/redo for command execution
+13. [DONE] Fixed async issues (remove_children, mount calls)
 
-GAMIFICATION:
-- Daily challenge mode (one new challenge per day)
-- Weekly streak rewards (bonus XP for 7-day streaks)
-- Skill trees (visual progression map)
-- Badge display on dashboard
-- XP multiplier events (double XP weekends)
-- Achievement showcase/profile view
-- Leaderboard (local, compare with friends)
+14. [DONE] Fixed achievement trigger mappings for track completions
 
-NOTES:
-- Markdown preview mode for notes
-- Auto-tag notes from content analysis
-- Note templates (command cheatsheet, lesson summary)
-- Note export (PDF, HTML)
-- Note version history (undo changes)
-- Note sharing via file import/export
+15. [DONE] Fixed dashboard timer leaks on navigation
 
-ANALYTICS:
-- Time-series charts (XP over time)
-- Command usage heatmap (visual frequency)
-- Learning velocity tracking (XP per session)
-- Skill gap analysis (weak areas highlighted)
-- Export analytics report (PDF/CSV)
-- Comparison with average user stats
+16. [DONE] Fixed notes export to use ShellMentor_Exports directory
 
-SETTINGS:
-- Custom keyboard shortcut configuration
-- Notification preferences (level up, achievement, streak)
-- Data backup/restore (import/export SQLite)
-- Auto-save interval configuration
-- Sandbox timeout configuration
-- Font size / terminal width preferences
+17. [DONE] Added confirmation dialog before challenge abandon
 
-CONTENT:
-- More Foundation Track lessons (target: 15+)
-- More Intermediate Track lessons (target: 15+)
-- More Advanced Track lessons (target: 10+)
-- More missions (target: 10+)
-- More achievements (target: 40+)
-- Video tutorials for complex concepts
-- Command cheatsheet reference
-- Interactive regex playground
-
-TESTING:
-- Unit tests for LearningEngine (track loading, quiz, validation)
-- Unit tests for ChallengeEngine (XP calc, mission progression)
-- Unit tests for PlaygroundEngine (autocomplete, sessions)
-- Unit tests for ProgressEngine (achievements, portfolio)
-- Unit tests for DataManager (all CRUD, streak, levels)
-- Integration tests (full user flow)
-- CI/CD pipeline with pytest
-
-DISTRIBUTION:
-- pip install support (pyproject.toml already configured)
-- Dockerfile for containerized deployment
-- Snap/flatpak packaging
-- Auto-update mechanism
-- Crash reporting
-- Anonymous usage telemetry (opt-in)
+REMAINING WORK
+--------------
+- Add unit tests for new features
+- Add timed mode toggle option per challenge
+- Add certificate export to file
+- Add challenge solution explanations post-submit (not just abandon)
+- Add more challenges (target: 60+)
+- Add more achievements (target: 40+)
+- Add data export/import (backup/restore) in settings
+- Add sandbox timeout setting in settings

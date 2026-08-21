@@ -1,26 +1,31 @@
-"""Basic smoke tests for ShellMentor core engines."""
+"""Core regression tests for ShellMentor's non-executing learning flow."""
 import sys
 from pathlib import Path
 
-# Ensure shellmentor package is importable
-sys.path.insert(0, str(Path(__file__).parent.parent / "shellmentor"))
+
+def test_command_lab_never_executes_user_input(tmp_path: Path):
+    from data_manager import DataManager
+    from playground import PlaygroundEngine
+
+    db = DataManager(tmp_path / "shellmentor.db")
+    result = PlaygroundEngine(db).submit_command("awk 'BEGIN { system(\"id\") }'")
+    db.close()
+
+    assert result.executed is False
+    assert result.exit_code == 0
+    assert "never executes" in result.stdout
 
 
-def test_sandbox_blocks_dangerous_commands():
-    from utils import SandboxEngine, WORKSPACE_DIR
-    sandbox = SandboxEngine(WORKSPACE_DIR)
-    result = sandbox.run("rm -rf /")
-    assert result.blocked, "Sandbox must block rm -rf /"
-    result2 = sandbox.run("sudo apt install malware")
-    assert result2.blocked, "Sandbox must block sudo"
+def test_command_lab_records_submission(tmp_path: Path):
+    from data_manager import DataManager
+    from playground import PlaygroundEngine
 
+    db = DataManager(tmp_path / "shellmentor.db")
+    PlaygroundEngine(db).submit_command("grep ERROR server.log")
+    history = db.get_command_history(context="playground")
+    db.close()
 
-def test_sandbox_allows_safe_commands():
-    from utils import SandboxEngine, WORKSPACE_DIR
-    sandbox = SandboxEngine(WORKSPACE_DIR)
-    result = sandbox.run("echo hello")
-    assert not result.blocked, "echo should not be blocked"
-    assert "hello" in result.stdout
+    assert history[0]["command"] == "grep ERROR server.log"
 
 
 def test_validate_output_line_count():
@@ -35,6 +40,14 @@ def test_validate_output_empty():
     from utils import validate_challenge_output
     ok, _ = validate_challenge_output("", "", "pattern_match")
     assert not ok, "Empty output should fail"
+
+
+def test_challenge_command_validation_does_not_execute():
+    from challenge import ChallengeEngine
+
+    challenge = {"solution": "grep -c ERROR server.log"}
+    assert ChallengeEngine._validate_command_answer("grep -c ERROR server.log", challenge)[0]
+    assert not ChallengeEngine._validate_command_answer("awk 'BEGIN {system(\"id\")}'", challenge)[0]
 
 
 def test_level_computation():

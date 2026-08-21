@@ -1,0 +1,387 @@
+ShellMentor — Code Review / Issue Report
+========================================
+Reviewed:  2026-08-21   (against 4.3.0)
+Resolved:  2026-08-21   (released as 4.4.0)
+Scope:     all Python modules, data/*.json, themes/, shellmentor.sh, CI, docs
+Method:    static read of every module + headless runtime testing with
+           Textual's App.run_test() pilot (all screens opened, challenge and
+           mission flows driven end to end) on the installed environment
+           (Python 3.13, textual 8.2.8, rich 15.0.0).
+
+STATUS SUMMARY
+--------------
+  44 issues found, 44 addressed in 4.4.0.
+  - 40 fixed in code, data, packaging or documentation
+  -  4 closed as "won't fix" with a stated reason (#43a, and the notes below
+     on Ctrl+S, theme CSS blocks and the flat-layout packaging workaround)
+  Verification: 12/12 tests pass (7 unit + 5 new headless UI smoke tests),
+  `compileall` clean, `uv sync` + `uv build` succeed, no unused imports remain.
+
+Legend:  [BLOCKER] app-breaking  [HIGH] wrong data/progression  [MED] visible
+         defect or missing behaviour  [LOW] hygiene, docs, dead code
+Items marked "verified" were reproduced at runtime before being fixed.
+
+
+------------------------------------------------------------------------
+0. STARTUP BLOCKERS
+------------------------------------------------------------------------
+
+[BLOCKER] #0  [FIXED] main.py:50 contained a stray absolute path — the file no
+              longer parsed.
+
+    handlers=[
+        logging.FileHandler(Path.home() / ".shellmentor.log"),
+    ]/home/codewithkunal/Desktop/ShellMentor/challenge.py
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+  `import main` raised NameError: name 'home' is not defined, so neither
+  `./shellmentor.sh` nor `python main.py` could start. Looked like an
+  accidental editor paste rather than a code change; HEAD was clean.
+  FIX: removed the stray path.
+
+[BLOCKER] #0b [FIXED] pyproject.toml had no wheel file-selection config, so any
+              build failed with "Unable to determine which files to ship inside
+              the wheel ... there is no directory that matches the name of your
+              project (shellmentor)". This broke `uv run`, `uv sync` and
+              `pip install .`.
+  FIX: explicit [tool.hatch.build.targets.wheel] and [...sdist] tables listing
+  the runtime modules plus data/, themes/ and workspace/. Verified with
+  `uv sync`, `uv build` and a clean-clone build.
+  WON'T FIX (noted): this is a workaround for the flat layout — the wheel drops
+  top-level main.py/utils.py/... into site-packages. The clean solution is to
+  move the code into a `shellmentor/` package with a [project.scripts] entry
+  point. That is a restructuring change, deliberately not bundled into a
+  bug-fix release.
+
+
+------------------------------------------------------------------------
+1. CRASHES  (all fixed, all now covered by test_ui_smoke.py)
+------------------------------------------------------------------------
+
+[BLOCKER] #1  [FIXED] ui_activities.py — ChallengeScreen._update_timer collided
+              with Textual's internal Screen._update_timer Timer attribute.
+  Verified: opening ANY challenge crashed with
+      AttributeError: 'function' object has no attribute 'pause'
+      textual/screen.py:1238  self._update_timer.pause()
+  FIX: renamed to _refresh_time_display.
+  TEST: test_challenge_screen_opens_and_scores_a_solution.
+
+[BLOCKER] #2  [FIXED] ui_screens.py — NameError: name 'user' is not defined in
+              AnalyticsScreen._render_analytics ("LEVEL PROGRESS" card).
+  Verified: the worker died before mount(), so the WHOLE analytics screen was
+  blank — not just that card.
+  FIX: load `user = self.app.db.get_user()` with the other data.
+  TEST: test_analytics_renders_content_for_a_new_user asserts the scroll
+  container actually has children.
+
+[BLOCKER] #3  [FIXED] ui_screens.py — TypeError formatting None. SQL AVG()/MIN()
+              return NULL for a user with no solved challenges, and
+              `.get(key, 0)` does not replace a stored None.
+  FIX: coerce with `avg_t.get("avg_time") or 0.0` before formatting.
+
+[BLOCKER] #4  [FIXED] ui_activities.py — KeyError 'xp_earned' in
+              MissionScreen.next_stage when advancing an already-complete
+              mission (submit_mission_stage returns only passed/message).
+  FIX: check `stage_result.get("passed")` and report the message instead.
+  TEST: test_mission_counts_one_completion_and_rejects_junk.
+
+
+------------------------------------------------------------------------
+2. PROGRESSION AND DATA INTEGRITY
+------------------------------------------------------------------------
+
+[HIGH] #5  [FIXED] Three achievement triggers were hardcoded `lambda s, e: True`
+           and fired on the first XP award.
+  Verified before: award_xp(10) produced xp=1010, level=2 and unlocked
+  speed_demon, pipeline_architect, portfolio_published.
+  Verified after:  award_xp(10) produces xp=10, level=1, no achievements.
+  FIX: real conditions — fastest recorded solve < 120 s, longest recorded
+  pipeline >= 5 stages, and a persisted portfolio_generated flag.
+
+[HIGH] #6  [FIXED] award_achievement() returned `conn.total_changes > 0`, which
+           is cumulative for the connection.
+  Verified after: first award True, duplicate award False.
+  FIX: use cursor.rowcount.
+
+[HIGH] #7  [FIXED] missions_completed counted every stage plus the completion
+           (a 4-stage mission scored 5).
+  FIX: new mission_history.is_final column (with migration; legacy stage-999
+  sentinel rows are converted). record_mission_stage() no longer touches the
+  counter; record_mission_complete() owns it, and get_completed_missions()
+  reads is_final so a mission is no longer "complete" after stage 1.
+  TEST: asserts missions_completed == 1 after a full mission.
+
+[HIGH] #8  [FIXED] Mission stages accepted any non-empty string.
+  FIX: stages are validated against their own `solution` with the same
+  structural check challenges use. All 46 stages in missions.json carry one.
+  TEST: junk input does not advance the mission.
+
+[HIGH] #9  [FIXED] Lesson score was always 100% — `"CORRECT" in rendered_text`
+           also matches "INCORRECT", so certificates were issued for all-wrong
+           answers.
+  FIX: correctness is tracked in `self._exercise_correct`, not scraped from
+  rendered markup.
+
+[HIGH] #10 [FIXED] The first-attempt XP bonus could never apply (attempts were
+           incremented after the XP calculation).
+  FIX: increment first, then calculate.
+
+[HIGH] #11 [FIXED] The solved command was never stored — command_history was
+           read but never appended to, so challenge_history.last_command was ''.
+  FIX: submit_challenge() records the submitted command.
+  TEST: asserts last_command equals the submitted solution.
+
+[HIGH] #12 [FIXED] Failed challenge attempts were never persisted, so attempt
+           counts, the analytics cards and suggest_difficulty() only saw wins.
+  FIX: submit_challenge() calls progress_engine.attempt_challenge() on failure.
+
+[HIGH] #13 [FIXED] Repeat completions inflated counters past the curriculum
+           size.
+  Verified after: three completions of the same lesson / three re-solves of the
+  same challenge each leave the counter at 1.
+  FIX: count only first completions; plus a one-off repair (see MIGRATION).
+
+[HIGH] #14 [FIXED] Achievement XP was added with db.add_xp(), bypassing
+           award_xp(), so achievement-driven level-ups fired no event or modal.
+  FIX: single XP path — ProgressEngine._apply_xp() fires XP and level-up events
+  and is used for both direct awards and achievement bonuses. DataManager no
+  longer awards XP at all.
+
+[HIGH] #15 [FIXED] Unreachable achievements.
+  FIX: `commands_executed`, `quizzes_taken` and `quiz_correct` added to the
+  stats dict; all 14 tracks mapped to trigger names (was 6); `all_tracks`
+  retriggered on a real "14 tracks completed" condition instead of
+  "lessons_completed >= 14"; perfect_score now means 5+ quizzes, all correct.
+  Verified after: commands_1000 and pipeline_5_commands both evaluate True once
+  their conditions actually hold.
+
+[HIGH] #16 [FIXED] _try_award() granted achievements while ignoring their
+           declared triggers (note_taker fired on the FIRST note).
+  FIX: helper deleted; ProgressEngine.check_achievements() evaluates triggers.
+
+[HIGH] #17 [FIXED] save_lesson_position() UPDATEd a row that only exists after
+           completion, so resume never worked for a lesson in progress.
+  FIX: upsert (insert a placeholder row when none exists).
+  Verified after: position 3 saved and read back for a never-completed lesson.
+
+[MED]  #18 [FIXED] Quiz XP was a flat 10 regardless of the "+N XP" shown.
+  FIX: record_quiz_answer(correct, xp=...) takes the question's own reward;
+  used_hint halves it.
+
+[MED]  #19 [FIXED] Lesson exercise XP was advertised but never awarded (a bare
+           `pass` with a comment).
+  FIX: ProgressEngine.complete_exercise() awards it once per exercise per
+  lesson; the UI shows "already credited" on a repeat.
+
+[MED]  #20 [FIXED] Challenge/mission submissions recorded the command twice,
+           inflating "Commands run".
+  FIX: the extra submit_command() calls removed; the engines record once.
+
+[MED]  #21 [FIXED] reset_all_progress() left challenge_streak and
+           challenges_nohint intact.
+  FIX: both cleared, plus last_active and the portfolio flag. Personal notes
+  are deliberately preserved (a progress reset should not delete a user's
+  notebook).
+  NOTE: legacy github_token / github_user columns remain in old databases.
+  They are unused, unread and harmless; dropping them would require a table
+  rebuild, so they are left in place.
+
+MIGRATION
+  On first launch 4.4.0 runs DataManager.recompute_progress_counters() once
+  (guarded by a schema_version row in a new `meta` table) and rebuilds
+  lessons_completed, challenges_solved, challenges_nohint, missions_completed
+  and commands_executed from the history tables, correcting values inflated by
+  #7 and #13.
+
+
+------------------------------------------------------------------------
+3. RENDERING AND UX
+------------------------------------------------------------------------
+
+[MED]  #22 [FIXED] Status markers were eaten by Textual markup.
+  Verified before: Content.from_markup("[X] done") -> " done";
+                   "[green][SOLVED][/]"            -> "" (label vanished).
+  FIX: "[X]"/"[ ]"/"[SOLVED]"/"[COMPLETED]"/"[LOCKED]" replaced with plain
+  glyphs (✔ ○ 🔒) across lessons, challenges, missions and achievements.
+
+[MED]  #23 [FIXED] Earned achievement rows produced invalid markup — an empty
+           style name gave "[]...[/]" (MarkupError under rich; a stray "[]"
+           and a swallowed marker under Textual).
+  FIX: always emit a real style name.
+  TEST: test_achievements_screen_renders_earned_rows.
+
+[MED]  #24 [FIXED] Dashboard printed "3,192 XP XP" (format_xp already appends
+           the unit).
+
+[MED]  #25 [FIXED] _show_difficulty_suggestion() was never called, and would
+           have raised NoMatches via query_one() if it were.
+  FIX: called from on_mount(); uses query() and returns early when there is no
+  suggestion.
+
+[MED]  #26 [FIXED] The Playground advertised features that were not wired up.
+  FIX: Up/Down now navigate command history and Tab completes (falling back to
+  normal focus-next when the box is empty, so the screen stays navigable).
+  The screen also opens and closes a recording session, so saved sessions and
+  the session count in analytics are real, and each submission prints a short
+  reference card from get_command_help().
+
+[MED]  #27 [FIXED] Settings listed shortcuts that did not match the bindings.
+  FIX: list corrected and Ctrl+U (Git Space) added. Settings moved from Ctrl+S
+  to **Ctrl+T** — many terminals swallow Ctrl+S as XOFF flow control, and the
+  challenge screen binds Ctrl+S to Submit. README and the dashboard hint block
+  updated to match.
+  WON'T FIX (noted): ChallengeScreen keeps Ctrl+S for Submit; it is the
+  conventional "save/submit" key and no longer collides with a global binding.
+
+[MED]  #28 [FIXED] The resume prompt had no effect — start_lesson() had already
+           restored the position and "No" did not rewind.
+  FIX: the answer is honoured (rewinds to section 0 on "No") and the lesson is
+  rendered once, after the choice.
+
+[LOW]  #29 [FIXED] The dashboard re-parsed its whole ASCII block every second.
+  FIX: cosmetic animation moved to 3 s, data refresh to 15 s.
+
+[LOW]  #30 [FIXED] ChallengeScreen never stopped its countdown when popped, and
+           the input stayed live after a timeout.
+  FIX: on_unmount() stops the timer; timeout disables input and Submit; Retry
+  re-enables them.
+
+[LOW]  #31 [FIXED] Note export built a filename from raw user input, so a title
+           containing "/" or ".." escaped ~/ShellMentor_Exports.
+  FIX: the name is sanitised to [A-Za-z0-9._-] and length-capped.
+
+[LOW]  #32 [FIXED] Escape discarded unsaved note edits silently.
+  FIX: NotesScreen compares the editor against the stored note and asks for
+  confirmation before leaving.
+
+
+------------------------------------------------------------------------
+4. PACKAGING, DATA AND REPOSITORY STATE
+------------------------------------------------------------------------
+
+[HIGH] #33 [FIXED] workspace/ was not tracked by git, so a fresh clone had no
+           datasets for any lesson, challenge or mission.
+  ROOT CAUSE: a blanket `*.log` rule in .gitignore silently excluded
+  apache.log, nginx.log, server.log, syslog.log and synthesis.log — five of the
+  twelve fixtures — so they could never be added.
+  FIX: .gitignore narrowed to `/*.log` + `.shellmentor.log`; all 12 workspace
+  files are staged for commit.
+
+[MED]  #34 [FIXED] Dangling dataset references.
+  FIX: ch_042 ("Multi-File Aggregator") now uses article.txt + names.txt
+  instead of the non-existent `data/` directory, and ch_047 ("VLSI Log Parser")
+  uses timing.rpt instead of vlsi_report.txt — objectives, descriptions, hints
+  and solutions updated to match. playground.DATASET_FILES regenerated from the
+  real workspace contents (dropped 4 phantom files, added article.txt and
+  names.txt, which were previously invisible in the UI).
+
+[MED]  #35 [FIXED] Dependencies had no upper bounds; issues #1 and #22 were
+           direct consequences of Textual major-version drift.
+  FIX: textual>=1.0,<9 / rich>=13.7,<16 / pyyaml>=6.0.1,<7 /
+  platformdirs>=4.2.0,<5 in pyproject.toml, requirements.txt and the README,
+  with a comment explaining why the ceilings exist.
+
+[MED]  #36 [FIXED] CI could not catch anything in section 1 (compileall plus 7
+           unit tests that never constructed a screen).
+  FIX: new test_ui_smoke.py mounts every screen through Textual's headless
+  pilot and asserts app._exception is None, with dedicated regression tests for
+  #1, #2, #4, #7, #8, #11 and #23. CI adds Python 3.13 to the matrix and a
+  `python -m build` step so #0b cannot recur; the release workflow builds too.
+
+[LOW]  #37 [FIXED] test_core.py's __main__ block called sys.exit() without
+           importing sys; pytest was missing from the bundled .venv.
+  FIX: import added; pytest installed into .venv so `python -m pytest -q` works
+  as CONTRIBUTING.md instructs.
+
+[LOW]  #38 [FIXED] Repository hygiene: sandbox.py deletion staged; uv.lock
+           removed from .gitignore (it is tracked on purpose for an app).
+
+[LOW]  #39 [FIXED] README was substantially fictional.
+  FIX: "Module Documentation" and "API Reference" rewritten from the actual
+  source signatures (extracted with inspect). Removed the invented
+  load_lesson / get_current_progress / advance_lesson / validate_solution /
+  submit_solution / execute_command / clear_environment / unlock_achievement
+  APIs, the `playground_engine.execute_command("ls -la")` example that
+  contradicted SECURITY.md, the `python main.py --help` instruction (main()
+  parses no arguments) and the Docker section (no Dockerfile in the repo).
+
+[LOW]  #40 [FIXED] Version and count drift.
+  FIX: 4.4.0 across utils.APP_VERSION, __init__.py, pyproject.toml,
+  shellmentor.sh, README and CHANGELOG; summary.txt corrected to 14 Python
+  files / 7 YAML themes (was "12 Python files | 12 YAML themes").
+  WON'T FIX (noted): each theme in themes.yaml still carries a `css:` block
+  that build_themes() does not read. Removing them touches all 7 themes and
+  risks breaking a future theming feature that was clearly intended; left in
+  place, recorded here so it is not mistaken for live configuration.
+
+[LOW]  #41 [FIXED] DataManager bound its default db_path at import time, so
+           patching data_manager.DB_PATH had no effect and there was no safe
+           way to run against a scratch database.
+  FIX: `db_path: Path | None = None`, resolved inside __init__;
+  ShellMentorApp(db_path=...) threads it through. The smoke tests rely on this.
+
+[LOW]  #42 [FIXED] SQL column names were f-string interpolated in update_user()
+           and increment_progress().
+  FIX: both whitelist their column names and raise ValueError otherwise.
+
+[LOW]  #43 [FIXED] Dead code.
+  FIX: removed the three never-instantiated widgets (XPBar, StatCard,
+  SectionHeader) and every unused import across the codebase (the three UI
+  modules each carried ~40 unused rich/textual symbols). progress.py's
+  function-local LearningEngine import and learning.py's duplicate utils import
+  removed. Verified: an AST scan now reports zero unused imports.
+  #43a WON'T FIX: learning.explain_regex(), get_translations(),
+  get_all_translations(), search(), playground.replay_session(),
+  diff_outputs(), get_stats(), PlaygroundSession.export_script()/
+  export_markdown() and utils.hash_command() are still not called by any
+  screen. They are coherent, working public API and are now documented as such
+  in the README rather than deleted; get_command_help(), autocomplete(),
+  history_up/down() and new_session()/close_session() were wired into the
+  Command Lab instead (see #26).
+
+[LOW]  #44 [FIXED] logging.basicConfig() ran at import time and wrote an
+           unbounded ~/.shellmentor.log.
+  FIX: configure_logging() is called from main(), attaches a
+  RotatingFileHandler (512 KB x 2 backups) to the "shellmentor" logger only,
+  and no longer reconfigures root logging for anything importing the package.
+
+
+------------------------------------------------------------------------
+5. WHAT WAS ALREADY SOLID  (unchanged)
+------------------------------------------------------------------------
+- The no-execution policy is genuinely honoured: no subprocess/os.system/eval
+  anywhere in the tree; PlaygroundEngine.submit_command only records, and the
+  achievement trigger evaluator is a hand-written parser rather than eval().
+- Content is real and consistent: 14 tracks / 43 lessons, 50 challenges,
+  10 missions, 31 achievements, 12 ranks — every record has the keys the code
+  reads, no duplicate ids, and rank thresholds in achievements.json match
+  data_manager._compute_level() exactly.
+- Schema migrations for added columns are handled defensively, and the module
+  split (ui_core / ui_screens / ui_activities) is a clean separation.
+
+
+------------------------------------------------------------------------
+6. VERIFICATION LOG FOR 4.4.0
+------------------------------------------------------------------------
+  python -m pytest -q ............................ 12 passed
+      test_core.py           7 tests (non-execution, validation, levels)
+      test_ui_smoke.py       5 tests (all screens, analytics, challenge,
+                                      mission, achievements)
+  python -m compileall -q .  ..................... clean
+  uv sync / uv build ............................. wheel + sdist built
+  clean-clone build .............................. succeeds
+  AST unused-import scan ......................... zero findings
+  Manual pilot run ............................... history, Tab completion,
+                                                   session recording verified
+
+
+------------------------------------------------------------------------
+7. RECOMMENDED NEXT STEPS  (not part of 4.4.0)
+------------------------------------------------------------------------
+1. Restructure into a `shellmentor/` package with a [project.scripts] entry
+   point, so the wheel stops shipping top-level modules (#0b).
+2. Add ruff to CI to keep unused imports and dead code from returning (#43).
+3. Decide the fate of the unused theme `css:` blocks (#40) — either consume
+   them in build_themes() or delete them.
+4. Widen UI test coverage to the lesson and quiz flows, which currently have
+   unit coverage of their engines but no pilot-level test.

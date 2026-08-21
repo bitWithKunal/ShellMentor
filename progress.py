@@ -11,10 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from utils import (
-    DATA_DIR, WORKSPACE_DIR, load_json, generate_portfolio_markdown,
-    format_xp, APP_VERSION
-)
+from utils import DATA_DIR, load_json, generate_portfolio_markdown
 from data_manager import DataManager
 
 logger = logging.getLogger("shellmentor")
@@ -90,30 +87,37 @@ class ProgressEngine:
 
     # ── XP Award ─────────────────────────────────────────────
 
-    def award_xp(self, amount: int, source: str, label: str = "") -> dict:
-        """Award XP, check for level-up, fire callbacks. Returns result dict."""
-        user_before = self.db.get_user()
-        old_level = user_before.get("level", 1)
+    def _apply_xp(self, amount: int, source: str, label: str = "") -> dict:
+        """Add XP and fire the XP / level-up events. No achievement check.
 
+        Every XP grant in the app goes through here so a level-up can never be
+        applied silently (achievement bonuses used to call db.add_xp directly).
+        """
+        old_level = self.db.get_user().get("level", 1)
         result = self.db.add_xp(amount)
-        new_level = result["level"]
-        leveled_up = result.get("leveled_up", False)
 
-        xp_event = XPEvent(source=source, amount=amount, label=label or source)
-        self._fire_xp(xp_event)
+        if amount:
+            self._fire_xp(XPEvent(source=source, amount=amount, label=label or source))
 
-        if leveled_up:
-            lv_event = LevelUpEvent(
+        if result.get("leveled_up", False):
+            self._fire_levelup(LevelUpEvent(
                 old_level=old_level,
-                new_level=new_level,
+                new_level=result["level"],
                 new_title=result["rank_title"],
-                xp_total=result["xp"]
-            )
-            self._fire_levelup(lv_event)
+                xp_total=result["xp"],
+            ))
+        return result
 
-        # Check achievements after every XP award
-        newly_earned = self.db.check_and_award_achievements(self._achievements_data)
-        for ach in newly_earned:
+    def award_xp(self, amount: int, source: str, label: str = "") -> dict:
+        """Award XP, check for level-up and achievements. Returns result dict."""
+        result = self._apply_xp(amount, source, label)
+
+        # Check achievements after every XP award. Their bonus XP is applied
+        # here (not inside DataManager) so it can level the user up properly.
+        for ach in self.db.check_and_award_achievements(self._achievements_data):
+            bonus = ach.get("xp_reward", 0)
+            if bonus:
+                result = self._apply_xp(bonus, "achievement", ach.get("title", ach["id"]))
             self._fire_achievement(ach)
 
         return result
@@ -133,8 +137,6 @@ class ProgressEngine:
 
     def _check_track_completion(self, track_id: str) -> None:
         """Check if all lessons in a track are complete."""
-        from learning import LearningEngine
-        # Import here to avoid circular; just check lesson count
         lessons_data = load_json(DATA_DIR / "lessons.json")
         tracks = lessons_data.get("tracks", [])
         for track in tracks:
@@ -155,13 +157,9 @@ class ProgressEngine:
             hints=hints_used, duration=duration, command=command
         )
         self.db.update_streak()
-        result = self.award_xp(xp_reward, "challenge", f"Challenge: {challenge_id}")
-
-        # Speed achievement check
-        if duration < 120:
-            self._try_award("speed_demon")
-
-        return result
+        # Achievements (including the sub-two-minute "speed_demon") are
+        # evaluated from recorded history inside award_xp — no hand-awarding.
+        return self.award_xp(xp_reward, "challenge", f"Challenge: {challenge_id}")
 
     def attempt_challenge(self, challenge_id: str, hints: int,
                           duration: float, command: str) -> None:
@@ -179,41 +177,51 @@ class ProgressEngine:
         return self.award_xp(stage_xp, "mission", f"Mission stage {stage}")
 
     def complete_mission(self, mission_id: str, total_xp: int) -> dict:
-        self.db.record_mission_stage(mission_id, 999, completed=True, xp=0)
-        result = self.award_xp(total_xp, "mission_complete", f"Mission: {mission_id}")
-        self._try_award("mission_complete")
-        return result
+        """Mark a mission finished and award its completion bonus."""
+        self.db.record_mission_complete(mission_id, xp=total_xp)
+        return self.award_xp(total_xp, "mission_complete", f"Mission: {mission_id}")
 
     # ── Quiz Result ───────────────────────────────────────────
 
-    def record_quiz_answer(self, correct: bool, used_hint: bool = False) -> None:
+    def record_quiz_answer(self, correct: bool, xp: int = 10,
+                           used_hint: bool = False) -> None:
+        """Record a quiz answer and award the question's own XP value."""
         self.db.record_quiz_result(correct)
         if correct:
-            xp = 5 if used_hint else 10
-            self.award_xp(xp, "quiz", "Quiz answer")
+            reward = max(1, xp // 2) if used_hint else xp
+            self.award_xp(reward, "quiz", "Quiz answer")
+
+    # ── Lesson Exercises ──────────────────────────────────────
+
+    def complete_exercise(self, lesson_id: str, exercise_index: int,
+                          xp: int) -> dict | None:
+        """Award exercise XP once per exercise, per lesson."""
+        key = f"exercise:{lesson_id}:{exercise_index}"
+        if self.db.get_setting(key, False):
+            return None
+        self.db.set_setting(key, True)
+        return self.award_xp(xp, "exercise", f"Exercise {exercise_index + 1}")
 
     # ── Notes ─────────────────────────────────────────────────
 
     def create_note(self, title: str, content: str, tags: list = None) -> int:
         note_id = self.db.create_note(title, content, tags)
-        self._try_award("note_taker")
+        # note_taker has a real trigger ("notes_created >= 5"); evaluate it
+        # rather than granting the badge on the first note.
+        self.check_achievements()
         return note_id
 
-    # ── Achievement Helpers ───────────────────────────────────
-
-    def _try_award(self, achievement_id: str) -> bool:
-        """Try to award a specific achievement by ID."""
-        ach = next((a for a in self._achievements_data if a["id"] == achievement_id), None)
-        if not ach:
-            return False
-        earned = self.db.get_earned_achievements()
-        if achievement_id in earned:
-            return False
-        if self.db.award_achievement(achievement_id, ach.get("xp_reward", 0)):
+    def check_achievements(self) -> list[dict]:
+        """Evaluate every achievement trigger and award/announce new ones."""
+        newly_earned = self.db.check_and_award_achievements(self._achievements_data)
+        for ach in newly_earned:
+            bonus = ach.get("xp_reward", 0)
+            if bonus:
+                self._apply_xp(bonus, "achievement", ach.get("title", ach["id"]))
             self._fire_achievement(ach)
-            self.db.add_xp(ach.get("xp_reward", 0))
-            return True
-        return False
+        return newly_earned
+
+    # ── Achievement Helpers ───────────────────────────────────
 
     def get_achievement_stats(self) -> dict:
         """Return achievement progress summary."""
@@ -253,7 +261,9 @@ class ProgressEngine:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
 
-        self._try_award("portfolio_published")
+        # Recorded as a fact; the portfolio_published trigger reads it.
+        self.db.set_setting("portfolio_generated", True)
+        self.check_achievements()
         logger.info(f"Portfolio generated at {output_path}")
         return content, output_path
 

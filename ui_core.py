@@ -11,39 +11,16 @@ that crept in when everything lived in one giant file.
 from __future__ import annotations
 
 import logging
-import time
-from pathlib import Path
-from typing import Any
 
-from rich.text import Text
-from rich.panel import Panel
-from rich.table import Table
-from rich.columns import Columns
-from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
-from rich.syntax import Syntax
-from rich.markdown import Markdown
-
-from textual import on, work
-from textual.app import App, ComposeResult
+from textual import on
+from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import (
-    Container, Horizontal, Vertical, ScrollableContainer, Grid
-)
-from textual.reactive import reactive
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.screen import Screen, ModalScreen
-from textual.widgets import (
-    Button, DataTable, Footer, Header, Input, Label,
-    ListItem, ListView, Markdown as MarkdownWidget,
-    ProgressBar, RichLog, Rule, Select, Static,
-    TabbedContent, TabPane, Tabs, Tab, TextArea, Tree, Checkbox, RadioButton, RadioSet
-)
+from textual.widgets import Button, Footer, Header, Rule, Static
 
-from data_manager import DataManager
 from progress import LevelUpEvent
-from utils import (
-    difficulty_icon, difficulty_color,
-    rarity_color, format_xp, truncate, APP_VERSION, APP_NAME
-)
+from utils import rarity_color
 
 logger = logging.getLogger("shellmentor")
 
@@ -221,62 +198,6 @@ class BaseScreen(Screen):
         self.app.action_go_github_space()
 
 
-# ──────────────────────── Shared Widgets ────────────────────────
-
-class XPBar(Static):
-    """Compact XP progress bar widget."""
-
-    def __init__(self, current_xp: int = 0, next_threshold: int = 500,
-                 pct: float = 0.0, **kwargs):
-        super().__init__(**kwargs)
-        self.current_xp = current_xp
-        self.next_threshold = next_threshold
-        self.pct = pct
-
-    def render(self) -> Text:
-        filled = min(20, int(self.pct / 5))
-        bar = "█" * filled + "░" * (20 - filled)
-        return Text.from_markup(
-            f"[gold1]{format_xp(self.current_xp)}[/] "
-            f"[cyan]{bar}[/] "
-            f"[grey70]{self.next_threshold:,} XP[/]"
-        )
-
-
-class StatCard(Static):
-    """Small stat display card."""
-
-    def __init__(self, label: str, value: str, icon: str = "",
-                 color: str = "cyan", **kwargs):
-        super().__init__(**kwargs)
-        self._label = label
-        self._value = value
-        self._icon  = icon
-        self._color = color
-
-    def render(self) -> Text:
-        return Text.from_markup(
-            f"[{self._color}]{self._icon} {self._value}[/]\n"
-            f"[grey50]{self._label}[/]"
-        )
-
-
-class SectionHeader(Static):
-    """Styled section title."""
-
-    def __init__(self, title: str, subtitle: str = "", **kwargs):
-        super().__init__(**kwargs)
-        self._title = title
-        self._subtitle = subtitle
-
-    def render(self) -> Text:
-        t = Text()
-        t.append(f"  {self._title}", style="bold cyan")
-        if self._subtitle:
-            t.append(f"  {self._subtitle}", style="grey50")
-        return t
-
-
 # ──────────────────────── Modal Screens ────────────────────────
 
 class LevelUpModal(ModalScreen):
@@ -448,4 +369,55 @@ class ConfirmModal(ModalScreen):
 
     def action_cancel(self) -> None:
         self.dismiss(False)
+
+
+class CertificateModal(ModalScreen):
+    """Lesson completion certificate."""
+
+    BINDINGS = [Binding("escape,enter,space", "dismiss", "Continue")]
+
+    def __init__(self, lesson_title: str, track_id: str, score: int, xp: int, **kwargs):
+        super().__init__(**kwargs)
+        self.lesson_title = lesson_title
+        self.track_id = track_id
+        self.score = score
+        self.xp = xp
+
+    def compose(self) -> ComposeResult:
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        grade = "A" if self.score >= 90 else "B" if self.score >= 80 else "C"
+        yield Container(
+            Static("CERTIFICATE OF COMPLETION", id="cert-header"),
+            Rule(),
+            Static(f"\n  This certifies that the learner has successfully completed", id="cert-body1"),
+            Static(f"\n  [bold cyan]{self.lesson_title}[/]", id="cert-title"),
+            Static(f"\n  Track: {self.track_id}  |  Score: {self.score}%  |  Grade: {grade}", id="cert-score"),
+            Static(f"\n  XP Earned: +{self.xp}  |  Date: {now}", id="cert-xp"),
+            Rule(),
+            Static(f"\n  ShellMentor — Professional Linux Learning Platform", id="cert-footer"),
+            Static("\n  Press ENTER to continue", id="cert-hint"),
+            id="cert-container",
+        )
+
+    DEFAULT_CSS = """
+    CertificateModal > Container {
+        background: #0e1117;
+        border: double gold;
+        width: 58;
+        height: 18;
+        margin: auto;
+        padding: 1 2;
+    }
+    #cert-header { color: gold; text-style: bold; text-align: center; }
+    #cert-body1  { color: #cdd6f4; }
+    #cert-title  { color: cyan; text-style: bold; }
+    #cert-score  { color: green; }
+    #cert-xp     { color: gold; }
+    #cert-footer { color: grey50; text-align: center; }
+    #cert-hint   { text-align: center; }
+    """
+
+    def action_dismiss(self) -> None:
+        self.dismiss()
 

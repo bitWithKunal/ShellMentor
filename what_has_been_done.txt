@@ -1,7 +1,7 @@
-ShellMentor v2.0.0 — What Has Been Done
-=========================================
+ShellMentor v4.4.0 — What Has Been Done
+==========================================
 Professional Linux Command-Line Learning Platform
-Reviewed: July 2026 | 12 Python files | ~5,500 lines
+Reviewed: July 2026 | 12 Python files | ~6,800 lines
 
 MODULE BREAKDOWN
 ----------------
@@ -10,30 +10,42 @@ main.py (697 lines)
   App entry point. Theme registry from YAML, OS username detection,
   session time tracking (30s flush), keyboard bindings (Ctrl+L/G/H/M/A/N/R/S/D/P/Q),
   command palette with search. Clean lifecycle: DB close + time flush on quit.
+  Engine init order: DataManager -> LearningEngine -> ProgressEngine ->
+  ChallengeEngine (with progress_engine) -> PlaygroundEngine.
 
-ui_core.py (451 lines)
+ui_core.py (502 lines)
   Shared foundation. BaseScreen template (sidebar + header + footer + render_content()).
-  NavButton, XPBar, StatCard, SectionHeader widgets. Four modals: LevelUp, Achievement,
-  Hint, Confirm.
+  NavButton, XPBar, StatCard, SectionHeader widgets. Five modals: LevelUp, Achievement,
+  Hint, Confirm, Certificate.
 
-ui_screens.py (1,555 lines)
-  8 screens. DashboardScreen: ASCII logo, animated progress bar, streak indicators.
-  LessonsScreen: track/lesson browser, section viewer, exercises, quizzes.
-  PlaygroundScreen: terminal, file browser, pipeline templates. NotesScreen: search/edit/save.
-  AnalyticsScreen: bar charts. SettingsScreen: theme selector (live preview), portfolio export.
-  EnvScanScreen: first-run system detection.
+ui_screens.py (~1,800 lines)
+  8 screens. DashboardScreen: ASCII logo, animated progress bar, streak indicators,
+  timer leak fix. LessonsScreen: track/lesson browser with difficulty indicators and
+  bookmark stars, section viewer, exercises, quizzes, estimated time remaining,
+  resume prompt. PlaygroundScreen: terminal, file browser, pipeline templates.
+  NotesScreen: search/edit/save with proper export directory. AnalyticsScreen:
+  bar charts, weekly activity, challenge performance, level progress.
+  SettingsScreen: theme selector (live preview), portfolio export, About section,
+  keyboard shortcuts. EnvScanScreen: first-run system detection. Certificate
+  modal on high-score completion.
 
-ui_activities.py (765 lines)
-  ChallengesScreen: difficulty filter, ChallengeScreen solver (Run/Submit/Hint).
-  MissionsScreen: stage progress, MissionScreen runner. AchievementsScreen: rarity grouped.
+ui_activities.py (~862 lines)
+  ChallengesScreen: difficulty filter with auto-suggestion. ChallengeScreen solver
+  with countdown timer, retry button, solution display on abandon/timeout,
+  confirmation dialog before abandon. MissionsScreen: async stage progress,
+  MissionScreen runner. AchievementsScreen: rarity grouped with async rendering.
 
-learning.py (401 lines)
-  Track/lesson engine. QuizSession with scoring. Exercise validation via shlex token overlap.
-  Command translator: 7 task categories across grep/sed/awk. Regex visualizer. Full-text search.
+learning.py (477 lines)
+  Track/lesson engine with difficulty-aware track stats (avg difficulty + icons).
+  QuizSession with scoring. Exercise validation: output regex + shlex token overlap.
+  Bookmark toggle, resume from saved position, estimated time remaining.
+  Command translator: 7 task categories. Regex visualizer. Full-text search.
 
-challenge.py (296 lines)
-  Challenge validation. XP formula: base * hint_factor * speed_factor * attempt_factor.
-  Mission mode with stage progression. Callback system for completion.
+challenge.py (345 lines)
+  Challenge validation. XP formula: base * hint_factor * speed_factor * attempt_factor
+  * streak_factor (+5% per streak, capped at +50%). Streak tracking (increment on solve,
+  reset on abandon). Difficulty suggestion (80%/30% threshold). Solution returned on
+  abandon. Time limit support with auto-expiry. Mission mode with stage progression.
 
 playground.py (479 lines)
   Command execution wrapper. Autocomplete: 50+ templates. 8 pipeline templates.
@@ -43,13 +55,17 @@ progress.py (311 lines)
   Gamification coordinator. XP events with callbacks. Achievement evaluation:
   compound AND/OR triggers without eval(). 12-level ranking. Portfolio generation.
 
-data_manager.py (638 lines)
-  SQLite with WAL journaling. 9 tables. Level computation (12 thresholds).
-  Streak tracking. Achievement trigger evaluator. Note search. Analytics summary.
+data_manager.py (~830 lines)
+  SQLite with WAL journaling. 11 tables. Level computation (12 thresholds).
+  Streak tracking (daily + challenge streak). Achievement trigger evaluator.
+  Note search. Enhanced analytics summary with weekly activity, challenge
+  performance, average/best solve times. Lesson position save/resume.
+  Bookmark toggle. Certificate issuance. Reset progress preserves theme.
 
-utils.py (584 lines)
-  SystemInfo detection. SandboxEngine: 50+ blocked commands, 15 blocked patterns,
+utils.py (618 lines)
+  SystemInfo detection. SandboxEngine: 50+ blocked commands, 17 blocked patterns,
   process group killing on timeout. Package manager detection. Text utilities.
+  /dev/null redirect allowed via negative lookahead.
 
 sandbox.py (463 lines)
   EnhancedSandbox, SessionRecording, VirtualFilesystem, OutputDiffer. (Unused)
@@ -58,45 +74,45 @@ test_core.py (70 lines)
   6 basic tests: sandbox blocking, safe commands, line count, empty output,
   level computation, XP formatting.
 
-WHAT WORKS WELL
----------------
-1. BaseScreen pattern eliminates sidebar/header/footer duplication
-2. Sandbox is genuinely secure (blocked commands + patterns + path checks)
-3. Achievement triggers handle AND/OR without eval()
-4. Command translator and regex visualizer add real pedagogical value
-5. Theme system with live preview is polished
-6. Data layer has proper schema, WAL, foreign keys, parameterized queries
+DATA FILES
+----------
 
-ISSUES FOUND
-------------
+data/lessons.json (~43 lessons, 14 tracks)
+  Linux Fundamentals (4), Text Processing (3), Regex Academy (2),
+  Shell Pipelines (3), Log Analysis (2), VLSI Text Processing (1),
+  Shell Scripting (3), File System & Permissions (4), Process Management (4),
+  Networking Fundamentals (3), Git & Version Control (3),
+  User & System Administration (3), Advanced Text Processing (4),
+  Data Analysis Pipeline (4)
 
-CRITICAL (Bug):
-1. Double XP on lesson completion — ui_screens.py:510 calls award_xp() directly
-   but learning_engine.complete_lesson() already records to DB. XP counted twice.
-2. Double XP on challenge completion — ui_activities.py:310 calls
-   complete_challenge() directly but ChallengeEngine callback already handles it.
-3. Sandbox bypass via command chaining — utils.py:248 validate() only checks first
-   token. `echo x && rm -rf /` passes because first token is "echo".
-4. Missing shell blocking — utils.py:37 BLOCKED_COMMANDS has bash/sh but misses
-   zsh, fish, csh, tcsh, dash, ksh. User can run `zsh -c "malicious"`.
+data/challenges.json (50 challenges)
+  11 beginner, 13 intermediate, 11 advanced, 9 expert, 6 master
 
-HIGH:
-5. Challenge validation too loose — utils.py:558 pattern_match returns True for
-   any non-empty output. `echo 42` passes a challenge about error frequency.
-6. Dashboard DB queries every second — ui_screens.py:104 triggers 3 queries/sec.
-7. /dev/null redirect blocked — utils.py:58 blocks `echo > /dev/null` (safe).
-8. Notes delete without confirmation — ui_screens.py:968 removes immediately.
+data/missions.json (10 missions, 46 stages)
+  Junior Linux Admin (4), Web Ops (5), VLSI PE (5), HR Analyst (4),
+  Security Analyst (4), Pipeline Architect (5), Version Control (4),
+  SysAdmin Pro (5), Network Troubleshoot (5), Data Pipeline (5)
 
-MEDIUM:
-9. Dead code: sandbox.py (463 lines) never instantiated anywhere.
-10. Challenge attempts double-counted — ui_activities.py:284 + challenge.py:146.
-11. First-attempt bonus never triggers — challenge.py:146 increments before check.
-12. Quiz answer case-sensitive — learning.py:54 exact string match.
-13. Unused imports across UI modules (detect_system, SystemInfo, etc.).
+data/achievements.json (31 achievements, 12 ranks)
+  Common: 5, Uncommon: 8, Rare: 8, Epic: 1, Legendary: 3
 
-LOW:
-14. XPBar overflow when pct > 100 — ui_core.py:237.
-15. get_lesson() return type lie — learning.py:114 annotated as dict|None.
-16. Settings reset bypasses DataManager — ui_screens.py:1448 raw SQL.
-17. Command output truncation silent — data_manager.py:538 output[:2000].
-18. Lesson score always 100 — ui_screens.py:510 hardcoded.
+workspace/ (12 dataset files)
+  server.log, employees.csv, apache.log, nginx.log, syslog.log,
+  timing.rpt, synthesis.log, constraints.sdc, liberty.lib,
+  sales.csv, article.txt, names.txt
+
+v4.4.0 IMPROVEMENTS
+--------------------
+1. Created 12 workspace dataset files for challenges and lessons
+2. Added 33 new lessons across 8 new tracks (43 total)
+3. Added 4 new missions (10 total, 46 stages)
+4. Enhanced analytics with weekly activity, challenge performance, level progress
+5. Added 9 new achievements (31 total)
+6. Fixed settings page: removed duplicate headers, added About section
+7. Fixed async issues in AnalyticsScreen, MissionsScreen, AchievementsScreen
+8. Fixed achievement trigger mappings for track completions
+9. Fixed dashboard animation timer leaks on navigation
+10. Fixed notes export to use ShellMentor_Exports directory
+11. Added confirmation dialog before challenge abandon
+12. Updated all_missions_complete threshold from 6 to 10
+13. Added new boolean triggers for shell_scripting and networking tracks

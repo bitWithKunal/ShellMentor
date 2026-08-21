@@ -666,6 +666,524 @@
       "tags": [
         "awk"
       ]
+    },
+    {
+      "id": "ch_029",
+      "title": "Log Line Counter",
+      "icon": "🔢",
+      "difficulty": "beginner",
+      "xp_reward": 120,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Count total lines in the log file",
+      "description": "How many lines are in the server log?",
+      "hints": [
+        "wc -l counts lines",
+        "Use it directly on the file"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "wc -l server.log",
+      "tags": [
+        "wc",
+        "count"
+      ]
+    },
+    {
+      "id": "ch_030",
+      "title": "Unique IPs Extractor",
+      "icon": "🌐",
+      "difficulty": "beginner",
+      "xp_reward": 140,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Extract all unique IP addresses from the log",
+      "description": "Find every distinct IP address that accessed the server.",
+      "hints": [
+        "grep can match IP patterns",
+        "sort -u gives unique lines"
+      ],
+      "expected_pattern": "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}",
+      "validation_type": "pattern_match",
+      "solution": "grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' server.log | sort -u",
+      "tags": [
+        "grep",
+        "sort",
+        "regex"
+      ]
+    },
+    {
+      "id": "ch_031",
+      "title": "First 10 Errors",
+      "icon": "📋",
+      "difficulty": "beginner",
+      "xp_reward": 110,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Show the first 10 error lines",
+      "description": "Display only the first 10 lines that contain ERROR.",
+      "hints": [
+        "grep finds ERROR lines",
+        "head limits output"
+      ],
+      "expected_pattern": "ERROR",
+      "validation_type": "pattern_match",
+      "solution": "grep 'ERROR' server.log | head -10",
+      "tags": [
+        "grep",
+        "head"
+      ]
+    },
+    {
+      "id": "ch_032",
+      "title": "Column Extractor",
+      "icon": "📊",
+      "difficulty": "beginner",
+      "xp_reward": 130,
+      "track": "linux_fundamentals",
+      "dataset": "employees.csv",
+      "objective": "Extract the second column (names) from the CSV",
+      "description": "The CSV has comma-separated values. Get just the name column.",
+      "hints": [
+        "cut -d selects delimiter",
+        "-f2 selects field 2"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "cut -d',' -f2 employees.csv",
+      "tags": [
+        "cut",
+        "csv"
+      ]
+    },
+    {
+      "id": "ch_033",
+      "title": "Word Frequency Counter",
+      "icon": "📝",
+      "difficulty": "intermediate",
+      "xp_reward": 200,
+      "track": "text_processing",
+      "dataset": "article.txt",
+      "objective": "Count frequency of each word and show top 5",
+      "description": "Analyze the article and find the 5 most frequently used words.",
+      "hints": [
+        "tr can split words",
+        "sort | uniq -c counts",
+        "head -5 gets top 5"
+      ],
+      "expected_pattern": "\\d+\\s+\\w+",
+      "validation_type": "pattern_match",
+      "solution": "tr ' ' '\\n' < article.txt | sort | uniq -c | sort -rn | head -5",
+      "tags": [
+        "tr",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_034",
+      "title": "Multi-Column Sort",
+      "icon": "📈",
+      "difficulty": "intermediate",
+      "xp_reward": 220,
+      "track": "text_processing",
+      "dataset": "sales.csv",
+      "objective": "Sort by third column (amount) numerically descending",
+      "description": "Sort the sales data by amount from highest to lowest.",
+      "hints": [
+        "sort -k3 sorts by column 3",
+        "-n for numeric, -r for reverse"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "sort -t',' -k3 -nr sales.csv",
+      "tags": [
+        "sort",
+        "csv",
+        "numeric"
+      ]
+    },
+    {
+      "id": "ch_035",
+      "title": "Duplicate Line Finder",
+      "icon": "🔍",
+      "difficulty": "intermediate",
+      "xp_reward": 190,
+      "track": "text_processing",
+      "dataset": "names.txt",
+      "objective": "Find all lines that appear more than once",
+      "description": "Some names are listed twice. Identify all duplicates.",
+      "hints": [
+        "sort groups duplicates",
+        "uniq -d shows only duplicates"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "sort names.txt | uniq -d",
+      "tags": [
+        "sort",
+        "uniq",
+        "duplicates"
+      ]
+    },
+    {
+      "id": "ch_036",
+      "title": "Log Severity Analyzer",
+      "icon": "⚗️",
+      "difficulty": "intermediate",
+      "xp_reward": 230,
+      "track": "text_processing",
+      "dataset": "server.log",
+      "objective": "Count occurrences of each log level (INFO, WARN, ERROR)",
+      "description": "Break down the log by severity level and count each.",
+      "hints": [
+        "grep -c counts matches",
+        "Run separate greps for each level",
+        "Or use awk to categorize"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "awk '{print $NF}' server.log | sort | uniq -c | sort -rn",
+      "tags": [
+        "awk",
+        "sort",
+        "uniq",
+        "log"
+      ]
+    },
+    {
+      "id": "ch_037",
+      "title": "CSV Statistics",
+      "icon": "🧮",
+      "difficulty": "intermediate",
+      "xp_reward": 250,
+      "track": "text_processing",
+      "dataset": "sales.csv",
+      "objective": "Calculate the average sale amount from the CSV",
+      "description": "Compute the average of the amount column in the sales data.",
+      "hints": [
+        "awk can do math",
+        "NR is the line count, sum += $3 accumulates",
+        "END block prints the result"
+      ],
+      "expected_pattern": "\\d+\\.\\d+",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' '{sum+=$3; n++} END{print sum/n}' sales.csv",
+      "tags": [
+        "awk",
+        "statistics",
+        "csv"
+      ]
+    },
+    {
+      "id": "ch_038",
+      "title": "Regex Grep Master",
+      "icon": "🎯",
+      "difficulty": "advanced",
+      "xp_reward": 300,
+      "track": "regex_academy",
+      "dataset": "server.log",
+      "objective": "Find all requests between 2AM and 4AM using regex",
+      "description": "Extract log entries from the early morning hours (02:xx to 03:xx).",
+      "hints": [
+        "grep -E enables extended regex",
+        "Match 02: or 03: at the start of the timestamp"
+      ],
+      "expected_pattern": "0[23]:",
+      "validation_type": "pattern_match",
+      "solution": "grep -E '(02|03):' server.log",
+      "tags": [
+        "grep",
+        "regex",
+        "time"
+      ]
+    },
+    {
+      "id": "ch_039",
+      "title": "Field Reformatter",
+      "icon": "🔧",
+      "difficulty": "advanced",
+      "xp_reward": 280,
+      "track": "text_processing",
+      "dataset": "employees.csv",
+      "objective": "Reformat CSV to: LastName, FirstName (tab separated)",
+      "description": "Swap first/last name columns and change delimiter to tab.",
+      "hints": [
+        "awk -F sets input delimiter",
+        "OFS sets output delimiter",
+        "Print fields in reverse order"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' '{OFS=\"\\t\"; print $2, $1}' employees.csv",
+      "tags": [
+        "awk",
+        "csv",
+        "reformat"
+      ]
+    },
+    {
+      "id": "ch_040",
+      "title": "Pipeline Composer",
+      "icon": "🔗",
+      "difficulty": "advanced",
+      "xp_reward": 320,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Find the top 3 IPs that triggered errors, with counts",
+      "description": "Combine multiple commands: filter errors, extract IPs, count, sort.",
+      "hints": [
+        "Start with grep for ERROR",
+        "Extract IPs with grep -o",
+        "Count with sort | uniq -c"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "grep 'ERROR' server.log | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' | sort | uniq -c | sort -rn | head -3",
+      "tags": [
+        "pipeline",
+        "grep",
+        "sort",
+        "uniq"
+      ]
+    },
+    {
+      "id": "ch_041",
+      "title": "Pattern Substitution",
+      "icon": "🔄",
+      "difficulty": "advanced",
+      "xp_reward": 290,
+      "track": "text_processing",
+      "dataset": "article.txt",
+      "objective": "Replace all occurrences of the word 'error' with 'issue' (case-insensitive)",
+      "description": "Rewrite the text file substituting error terminology.",
+      "hints": [
+        "sed s/old/new/g does substitution",
+        "Add i flag for case-insensitive"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "sed 's/error/issue/gI' article.txt",
+      "tags": [
+        "sed",
+        "substitution"
+      ]
+    },
+    {
+      "id": "ch_042",
+      "title": "Multi-File Aggregator",
+      "icon": "📦",
+      "difficulty": "advanced",
+      "xp_reward": 310,
+      "track": "linux_fundamentals",
+      "dataset": "article.txt + names.txt",
+      "objective": "Count total lines across all .txt files in the workspace  directory",
+      "description": "Aggregate line counts from multiple text files.",
+      "hints": [
+        "find locates files",
+        "xargs passes them to wc",
+        "Or use wc article.txt names.txt"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "wc -l article.txt names.txt",
+      "tags": [
+        "wc",
+        "glob",
+        "aggregation"
+      ]
+    },
+    {
+      "id": "ch_043",
+      "title": "Regex Alternation",
+      "icon": "🎲",
+      "difficulty": "expert",
+      "xp_reward": 400,
+      "track": "regex_academy",
+      "dataset": "server.log",
+      "objective": "Find lines containing either GET or POST requests with status 404",
+      "description": "Use alternation in regex to match multiple HTTP methods.",
+      "hints": [
+        "grep -E for extended regex",
+        "(GET|POST) matches either",
+        "Combine with 404 status"
+      ],
+      "expected_pattern": "(GET|POST).*404|404.*(GET|POST)",
+      "validation_type": "pattern_match",
+      "solution": "grep -E '(GET|POST).*404|404.*(GET|POST)' server.log",
+      "tags": [
+        "grep",
+        "regex",
+        "alternation"
+      ]
+    },
+    {
+      "id": "ch_044",
+      "title": "Backreference Master",
+      "icon": "🪞",
+      "difficulty": "expert",
+      "xp_reward": 420,
+      "track": "regex_academy",
+      "dataset": "article.txt",
+      "objective": "Find any repeated word (e.g. 'the the') using backreferences",
+      "description": "Detect accidental word duplications in the text.",
+      "hints": [
+        "\\b matches word boundaries",
+        "(\\w+) captures a word",
+        "\\1 references the capture group"
+      ],
+      "expected_pattern": "(\\w+)\\s+\\1",
+      "validation_type": "pattern_match",
+      "solution": "grep -iE '\\b(\\w+)\\s+\\1\\b' article.txt",
+      "tags": [
+        "grep",
+        "regex",
+        "backreference"
+      ]
+    },
+    {
+      "id": "ch_045",
+      "title": "AWK Report Builder",
+      "icon": "📑",
+      "difficulty": "expert",
+      "xp_reward": 450,
+      "track": "text_processing",
+      "dataset": "sales.csv",
+      "objective": "Generate a report: department, total sales, average sale, count",
+      "description": "Build a multi-column summary grouped by department.",
+      "hints": [
+        "awk associative arrays group by key",
+        "Count, sum, and average in the END block"
+      ],
+      "expected_pattern": "",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1{dept=$2; sum[dept]+=$3; count[dept]++} END{for(d in sum) printf \"%s: total=%.0f avg=%.0f count=%d\\n\", d, sum[d], sum[d]/count[d], count[d]}' sales.csv",
+      "tags": [
+        "awk",
+        "grouping",
+        "statistics"
+      ]
+    },
+    {
+      "id": "ch_046",
+      "title": "Nested Pipeline",
+      "icon": "🌀",
+      "difficulty": "expert",
+      "xp_reward": 430,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Find IPs that have both GET and POST requests",
+      "description": "Use comm or set operations to find IPs appearing in two filtered sets.",
+      "hints": [
+        "grep GET, extract IPs, sort > file1",
+        "grep POST, extract IPs, sort > file2",
+        "comm -12 finds common lines"
+      ],
+      "expected_pattern": "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}",
+      "validation_type": "pattern_match",
+      "solution": "grep GET server.log | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' | sort -u > /tmp/get_ips.txt && grep POST server.log | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' | sort -u > /tmp/post_ips.txt && comm -12 /tmp/get_ips.txt /tmp/post_ips.txt",
+      "tags": [
+        "comm",
+        "set",
+        "pipeline"
+      ]
+    },
+    {
+      "id": "ch_047",
+      "title": "VLSI Log Parser",
+      "icon": "⚡",
+      "difficulty": "expert",
+      "xp_reward": 460,
+      "track": "vlsi_track",
+      "dataset": "timing.rpt",
+      "objective": "Extract all critical timing violations and their slack values",
+      "description": "Parse the EDA report for timing violations with negative slack.",
+      "hints": [
+        "grep for CRITICAL or VIOLATION",
+        "awk extracts slack column",
+        "sort by worst slack first"
+      ],
+      "expected_pattern": "-\\d+\\.\\d+",
+      "validation_type": "pattern_match",
+      "solution": "grep -i 'violation\\|critical' timing.rpt | awk '{print $NF}' | sort -n | head -10",
+      "tags": [
+        "grep",
+        "awk",
+        "vlsi",
+        "timing"
+      ]
+    },
+    {
+      "id": "ch_048",
+      "title": "Quantifier Challenge",
+      "icon": "🎯",
+      "difficulty": "master",
+      "xp_reward": 550,
+      "track": "regex_academy",
+      "dataset": "article.txt",
+      "objective": "Find all email addresses in the text using a complete regex",
+      "description": "Extract valid email addresses with proper regex quantifiers.",
+      "hints": [
+        "[a-zA-Z0-9]+ matches the local part",
+        "@ is literal",
+        "\\.[a-zA-Z]{2,} matches domain suffix"
+      ],
+      "expected_pattern": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+      "validation_type": "pattern_match",
+      "solution": "grep -oE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}' article.txt",
+      "tags": [
+        "grep",
+        "regex",
+        "email"
+      ]
+    },
+    {
+      "id": "ch_049",
+      "title": "Complex Pipeline Chain",
+      "icon": "⛓️",
+      "difficulty": "master",
+      "xp_reward": 580,
+      "track": "linux_fundamentals",
+      "dataset": "server.log",
+      "objective": "Top 5 IPs by error count, formatted as a table with headers",
+      "description": "Build a pipeline that produces a formatted report with headers.",
+      "hints": [
+        "printf can add headers",
+        "Column alignment with printf format strings",
+        "Pipe through column -t"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "echo 'Count  IP'; grep 'ERROR' server.log | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' | sort | uniq -c | sort -rn | head -5 | awk '{printf \"%-6s %s\\n\", $1, $2}'",
+      "tags": [
+        "pipeline",
+        "printf",
+        "formatting"
+      ]
+    },
+    {
+      "id": "ch_050",
+      "title": "Full Analysis Report",
+      "icon": "🏆",
+      "difficulty": "master",
+      "xp_reward": 600,
+      "track": "text_processing",
+      "dataset": "sales.csv",
+      "objective": "Generate complete sales report: top product, top region, total revenue",
+      "description": "Build a comprehensive multi-metric analysis in a single pipeline.",
+      "hints": [
+        "awk can compute multiple aggregates",
+        "Use BEGIN/END blocks",
+        "printf formats output"
+      ],
+      "expected_pattern": "\\d+",
+      "validation_type": "pattern_match",
+      "solution": "awk -F',' 'NR>1{sum[$4]+=$3; count[$4]++} END{for(r in sum) printf \"%s: revenue=%d avg=%.0f\\n\", r, sum[r], sum[r]/count[r]}' sales.csv | sort -t= -k2 -rn | head -5",
+      "tags": [
+        "awk",
+        "analysis",
+        "report"
+      ]
     }
   ]
 }

@@ -6,11 +6,12 @@ Challenge engine: loading challenges, validation, mission mode, scoring.
 from __future__ import annotations
 
 import logging
+import shlex
 import time
 from dataclasses import dataclass, field
 from typing import Callable
 
-from utils import DATA_DIR, WORKSPACE_DIR, load_json, validate_challenge_output
+from utils import DATA_DIR, load_json
 from data_manager import DataManager
 
 logger = logging.getLogger("shellmentor")
@@ -23,10 +24,21 @@ class ActiveChallenge:
     hints_revealed: int = 0
     attempts: int = 0
     command_history: list[str] = field(default_factory=list)
+    time_limit: int = 0  # seconds, 0 = no limit
 
     @property
     def elapsed(self) -> float:
         return time.time() - self.started_at
+
+    @property
+    def time_remaining(self) -> float:
+        if self.time_limit <= 0:
+            return float('inf')
+        return max(0, self.time_limit - self.elapsed)
+
+    @property
+    def is_expired(self) -> bool:
+        return self.time_limit > 0 and self.elapsed >= self.time_limit
 
     def next_hint(self) -> str | None:
         hints = self.challenge.get("hints", [])
@@ -71,8 +83,9 @@ class ActiveMission:
 class ChallengeEngine:
     """Manages challenges and missions."""
 
-    def __init__(self, db: DataManager):
+    def __init__(self, db: DataManager, progress_engine=None):
         self.db = db
+        self._progress_engine = progress_engine
         self._challenges_data: list[dict] = []
         self._missions_data: list[dict] = []
         self._active: ActiveChallenge | None = None
@@ -130,34 +143,30 @@ class ChallengeEngine:
         ch = self.get_challenge(challenge_id)
         if not ch:
             return None
-        self._active = ActiveChallenge(challenge=ch)
+        time_limit = ch.get("time_limit", 0)
+        self._active = ActiveChallenge(challenge=ch, time_limit=time_limit)
         return self._active
 
     @property
     def active_challenge(self) -> ActiveChallenge | None:
         return self._active
 
-    def submit_challenge(self, user_output: str) -> dict:
-        """Validate challenge submission. Returns result dict."""
+    def submit_challenge(self, user_command: str) -> dict:
+        """Validate a submitted command without executing it."""
         if not self._active:
             return {"solved": False, "message": "No active challenge"}
 
         ch = self._active.challenge
 
-        passed, message = validate_challenge_output(
-            user_output,
-            ch.get("expected_pattern", ""),
-            ch.get("validation_type", "pattern_match"),
-            ch.get("expected_lines", 0)
-        )
-
-        # Calculate XP before incrementing attempts (so first-attempt bonus works)
-        if passed:
-            xp_reward = self._calc_challenge_xp(ch, self._active)
-        else:
-            xp_reward = 0
-
+        # The submitted command is part of the attempt record.
+        self._active.command_history.append(user_command)
         self._active.attempts += 1
+
+        passed, message = self._validate_command_answer(user_command, ch)
+
+        # attempts is already incremented, so the first submission counts as 1
+        # and the first-attempt bonus in _calc_challenge_xp can apply.
+        xp_reward = self._calc_challenge_xp(ch, self._active) if passed else 0
 
         result = {
             "solved":    passed,
@@ -166,9 +175,19 @@ class ChallengeEngine:
             "elapsed":   self._active.elapsed,
             "hints_used":self._active.hints_revealed,
             "xp_earned": xp_reward,
+            "command":   user_command,
         }
 
         if passed:
+            if self._progress_engine:
+                self._progress_engine.complete_challenge(
+                    ch["id"], xp_reward,
+                    self._active.hints_revealed,
+                    self._active.elapsed,
+                    result.get("command", ""),
+                )
+            # Increment challenge streak
+            self.db.increment_challenge_streak()
             result["solution"]  = ch.get("solution", "")
             for cb in self._on_complete_callbacks:
                 try:
@@ -181,8 +200,40 @@ class ChallengeEngine:
                 except Exception as e:
                     logger.error(f"Challenge complete callback error: {e}")
             self._active = None
+        elif self._progress_engine:
+            # Failed attempts are recorded as well, otherwise attempt counts,
+            # the analytics cards and suggest_difficulty() only ever see wins.
+            self._progress_engine.attempt_challenge(
+                ch["id"], self._active.hints_revealed,
+                self._active.elapsed, user_command,
+            )
 
         return result
+
+    @staticmethod
+    def _validate_command_answer(user_command: str, challenge: dict) -> tuple[bool, str]:
+        """Assess command structure only; this method never runs user input."""
+        solution = challenge.get("solution", "").strip()
+        if not user_command.strip():
+            return False, "Enter a command before submitting."
+        if not solution:
+            return False, "This challenge has no reference command yet."
+        try:
+            submitted = shlex.split(user_command)
+            reference = shlex.split(solution)
+        except ValueError as exc:
+            return False, f"Command syntax could not be read: {exc}"
+        if not submitted or not reference:
+            return False, "Enter a complete command."
+        if submitted == reference:
+            return True, "Exact command match."
+        if submitted[0] != reference[0]:
+            return False, f"Start with the expected tool: {reference[0]}."
+
+        overlap = len(set(submitted) & set(reference)) / max(len(set(reference)), 1)
+        if overlap >= 0.60:
+            return True, "Command structure matches the reference solution."
+        return False, "The command is incomplete or differs from the expected structure."
 
     def _calc_challenge_xp(self, challenge: dict, session: ActiveChallenge) -> int:
         """Calculate XP with bonuses/penalties."""
@@ -193,7 +244,10 @@ class ChallengeEngine:
         speed_factor = 1.2 if session.elapsed < 60 else 1.0
         # First attempt bonus: +10%
         attempt_factor = 1.1 if session.attempts == 1 else 1.0
-        return int(base_xp * hint_factor * speed_factor * attempt_factor)
+        # Streak bonus: +5% per streak, capped at +50%
+        streak = self.db.get_challenge_streak()
+        streak_factor = min(1.5, 1.0 + (streak * 0.05))
+        return int(base_xp * hint_factor * speed_factor * attempt_factor * streak_factor)
 
     def request_hint(self) -> str | None:
         """Request next hint for active challenge."""
@@ -201,8 +255,35 @@ class ChallengeEngine:
             return None
         return self._active.next_hint()
 
-    def abandon_challenge(self) -> None:
+    def abandon_challenge(self) -> dict | None:
+        """Abandon active challenge. Returns solution info for display."""
+        if not self._active:
+            return None
+        ch = self._active.challenge
+        info = {
+            "title": ch.get("title", ""),
+            "solution": ch.get("solution", ""),
+            "hints": ch.get("hints", []),
+            "hints_used": self._active.hints_revealed,
+            "elapsed": self._active.elapsed,
+        }
+        # Reset streak on abandon
+        self.db.reset_challenge_streak()
         self._active = None
+        return info
+
+    def suggest_difficulty(self) -> str | None:
+        """Suggest difficulty based on recent performance."""
+        recent = self.db.get_recent_challenge_history(20)
+        if len(recent) < 5:
+            return None
+        solved = sum(1 for r in recent if r["solved"])
+        rate = solved / len(recent)
+        if rate >= 0.8:
+            return "up"
+        elif rate <= 0.3:
+            return "down"
+        return None
 
     # ── Mission Mode ──────────────────────────────────────────
 
@@ -235,7 +316,7 @@ class ChallengeEngine:
     def active_mission(self) -> ActiveMission | None:
         return self._active_mission
 
-    def submit_mission_stage(self, user_output: str) -> dict:
+    def submit_mission_stage(self, user_command: str) -> dict:
         """Validate current mission stage. Returns result dict."""
         if not self._active_mission:
             return {"passed": False, "message": "No active mission"}
@@ -244,12 +325,18 @@ class ChallengeEngine:
         if not stage:
             return {"passed": False, "message": "Mission is already complete"}
 
-        passed, message = validate_challenge_output(
-            user_output, "", "format_check", 0
-        )
+        if not user_command.strip():
+            return {"passed": False, "message": "Enter a command first."}
+
+        # Stages carry their own reference solution — validate against it with
+        # the same structural check challenges use, instead of accepting any
+        # non-empty string.
+        passed, message = self._validate_command_answer(user_command, stage)
+        if not passed:
+            return {"passed": False, "message": message}
 
         result = {
-            "passed":   True,  # Missions are more guided, accept reasonable output
+            "passed":   True,
             "message":  f"Stage {stage['stage']} complete! {message}",
             "xp_earned": stage.get("xp", 100),
             "stage":    stage["stage"],

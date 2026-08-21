@@ -1,7 +1,7 @@
 """
 ShellMentor - utils.py
-System utilities: Linux detection, environment scanning, sandbox engine,
-dependency management, and general helpers.
+System utilities: Linux detection, environment scanning, dependency
+management, and general helpers.
 """
 
 from __future__ import annotations
@@ -12,11 +12,7 @@ import logging
 import os
 import platform
 import re
-import shlex
 import shutil
-import subprocess
-import sys
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -27,59 +23,14 @@ logger = logging.getLogger("shellmentor")
 # ─────────────────────────── Constants ───────────────────────────
 
 APP_NAME = "ShellMentor"
-APP_VERSION = "4.1.0"
+APP_VERSION = "4.4.0"
 APP_TAGLINE = "Professional Linux Command-Line Learning Platform"
 
 WORKSPACE_DIR = Path(__file__).parent / "workspace"
 DATA_DIR      = Path(__file__).parent / "data"
 THEMES_DIR    = Path(__file__).parent / "themes"
 
-BLOCKED_COMMANDS = frozenset([
-    "rm", "rmdir", "dd", "mkfs", "fdisk", "mkswap", "shutdown",
-    "reboot", "halt", "poweroff", "init", "telinit",
-    "passwd", "chpasswd", "useradd", "userdel", "usermod",
-    "chmod", "chown", "chgrp", "sudo", "su", "doas",
-    "systemctl", "service", "systemd", "journalctl",
-    "iptables", "ip6tables", "nftables", "ufw",
-    "mount", "umount", "fsck", "parted", "lvm",
-    "wget", "curl", "nc", "netcat", "ncat", "ssh", "scp",
-    "python", "python3", "perl", "ruby", "node", "bash",
-    "sh", "zsh", "fish", "dash", "csh", "tcsh", "ksh",
-    "rbash", "rksh", "rzsh",
-    "eval", "exec", "source",
-    "crontab", "at", "batch",
-    "kill", "killall", "pkill",
-    "export", "env", "printenv",
-    "socat", "lua", "tclsh", "expect",
-])
-
-BLOCKED_PATTERNS = [
-    r"rm\s+-[^\s]*r",       # rm -r, rm -rf, etc.
-    r">\s*/dev/(?!null)",    # writing to /dev (except /dev/null)
-    r">\s*/etc/",            # overwriting /etc
-    r">\s*/sys/",            # kernel sysfs
-    r">\s*/proc/",           # proc fs
-    r";",                    # semicolon command chaining
-    r"&&",                   # AND command chaining
-    r"\|\|",                 # OR command chaining
-    r"\|\s*sh\b",            # pipe to shell
-    r"\|\s*bash\b",          # pipe to bash
-    r"mkfs",                 # format filesystem
-    r"\.\.\./",              # path traversal
-    r"~/",                   # home directory access
-    r"/home/",               # home directory
-    r"/root/",               # root home
-    r"/etc/",                # system config
-    r"/usr/",                # system binaries
-    r"/var/",                # system var
-    r"/sys/",                # sysfs
-    r"/proc/",               # procfs
-    r"/dev/",                # devices
-    r"\$\(",                 # command substitution
-    r"`",                    # backtick substitution
-]
-
-SAFE_COMMANDS = frozenset([
+SUPPORTED_COMMANDS = frozenset([
     "grep", "egrep", "fgrep",
     "sed", "awk", "gawk",
     "cut", "sort", "uniq", "tr", "wc", "head", "tail", "tee",
@@ -150,19 +101,19 @@ class SystemInfo:
 
 
 @dataclass
-class SandboxResult:
+class PracticeResult:
+    """Result of recording a command answer; no command is ever executed."""
     command:    str
     stdout:     str
     stderr:     str
     exit_code:  int
     duration_ms: float
-    blocked:    bool = False
-    block_reason: str = ""
+    executed: bool = False
     timestamp:  str = field(default_factory=lambda: datetime.now().isoformat())
 
     @property
     def success(self) -> bool:
-        return self.exit_code == 0 and not self.blocked
+        return self.exit_code == 0
 
     @property
     def output(self) -> str:
@@ -237,130 +188,6 @@ def get_install_command(system_info: SystemInfo, packages: list[str]) -> str:
     pkg_names = [name_map.get(p, p) for p in packages]
 
     return f"{base_cmd} {' '.join(pkg_names)}"
-
-
-# ─────────────────────────── Sandbox Engine ───────────────────────────
-
-class SandboxEngine:
-    """Isolated command execution environment."""
-
-    def __init__(self, workspace: Path = WORKSPACE_DIR):
-        self.workspace = workspace
-        self.workspace.mkdir(parents=True, exist_ok=True)
-        self.history: list[SandboxResult] = []
-
-    def validate(self, command: str) -> tuple[bool, str]:
-        """Validate a command before execution. Returns (safe, reason)."""
-        stripped = command.strip()
-        if not stripped:
-            return False, "Empty command"
-
-        # Extract the base command
-        try:
-            tokens = shlex.split(stripped)
-        except ValueError as e:
-            return False, f"Parse error: {e}"
-
-        base = tokens[0].lower() if tokens else ""
-        base = os.path.basename(base)
-
-        if base in BLOCKED_COMMANDS:
-            return False, f"'{base}' is blocked for safety. Use safe alternatives."
-
-        # Check blocked patterns
-        for pat in BLOCKED_PATTERNS:
-            if re.search(pat, stripped, re.IGNORECASE):
-                return False, f"Blocked pattern detected: path traversal or dangerous redirection."
-
-        # Check for output redirection to non-workspace paths
-        if ">" in stripped:
-            redirect_match = re.search(r">\s*([^\s>|]+)", stripped)
-            if redirect_match:
-                redir_path = redirect_match.group(1)
-                if not redir_path.startswith(("./", "/tmp/")) and "/" in redir_path:
-                    return False, "Output redirection outside workspace is blocked."
-
-        return True, ""
-
-    def run(self, command: str, timeout: int = 10) -> SandboxResult:
-        """Execute a command in the sandbox workspace."""
-        safe, reason = self.validate(command)
-        if not safe:
-            result = SandboxResult(
-                command=command, stdout="", stderr=reason,
-                exit_code=1, duration_ms=0, blocked=True, block_reason=reason
-            )
-            self.history.append(result)
-            return result
-
-        start = time.monotonic()
-        proc = None
-        try:
-            # start_new_session=True creates a new process group so that on
-            # timeout we can kill the whole group (shell + children), preventing
-            # zombie processes and terminal hangs.
-            proc = subprocess.Popen(
-                command,
-                shell=True,
-                cwd=str(self.workspace),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                env={**os.environ, "HOME": str(self.workspace)},
-                start_new_session=True,
-            )
-            try:
-                stdout, stderr = proc.communicate(timeout=timeout)
-            except subprocess.TimeoutExpired:
-                # Kill the entire process group cleanly
-                import signal as _sig
-                try:
-                    os.killpg(os.getpgid(proc.pid), _sig.SIGKILL)
-                except (ProcessLookupError, OSError):
-                    proc.kill()
-                proc.wait()
-                duration = timeout * 1000
-                result = SandboxResult(
-                    command=command, stdout="",
-                    stderr=f"Command timed out after {timeout}s — killed.",
-                    exit_code=124, duration_ms=duration,
-                    blocked=True, block_reason="timeout",
-                )
-                self.history.append(result)
-                return result
-
-            duration = (time.monotonic() - start) * 1000
-            # Truncate very large outputs to avoid UI freeze
-            if len(stdout) > 50_000:
-                stdout = stdout[:50_000] + "\n[... output truncated at 50 KB ...]"
-            result = SandboxResult(
-                command=command,
-                stdout=stdout,
-                stderr=stderr,
-                exit_code=proc.returncode,
-                duration_ms=duration,
-            )
-        except Exception as e:
-            if proc is not None:
-                try:
-                    proc.kill()
-                    proc.wait()
-                except Exception:
-                    pass
-            duration = (time.monotonic() - start) * 1000
-            result = SandboxResult(
-                command=command, stdout="",
-                stderr=str(e), exit_code=1, duration_ms=duration,
-            )
-
-        self.history.append(result)
-        return result
-
-    def clear_history(self) -> None:
-        self.history.clear()
-
-    def get_history_commands(self) -> list[str]:
-        return [r.command for r in self.history]
 
 
 # ─────────────────────────── File Utilities ───────────────────────────
@@ -597,6 +424,14 @@ def validate_challenge_output(user_output: str, expected_pattern: str,
                 nums = [int(n) for n in numbers]
                 if nums != sorted(nums, reverse=True):
                     return False, "Output doesn't appear to be sorted in descending order."
+
+        # Try regex matching against expected_pattern
+        if expected_pattern:
+            try:
+                if re.search(expected_pattern, output, re.MULTILINE | re.IGNORECASE):
+                    return True, "Output matches expected pattern."
+            except re.error:
+                pass
 
         # General: require at least 1 non-empty line
         if len(non_empty) >= 1:
