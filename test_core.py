@@ -67,6 +67,94 @@ def test_xp_format():
     assert format_xp(0) == "0 XP"
 
 
+def test_safe_export_filename_blocks_path_traversal():
+    from utils import safe_export_filename
+    traversal = safe_export_filename("../.bashrc")
+    assert "/" not in traversal and not traversal.startswith(".")
+    assert "/" not in safe_export_filename("a/b/c")
+    assert safe_export_filename("   ") == "export"
+    assert safe_export_filename("x", default="fallback") != ""
+
+
+def test_split_pipeline_respects_quotes():
+    from utils import split_pipeline
+    assert split_pipeline("grep ERROR f | sort | uniq -c") == [
+        "grep ERROR f", "sort", "uniq -c",
+    ]
+    # A '|' inside quotes is not a pipeline boundary.
+    piped_inside_quotes = "awk '{print $1\"|\"$2}'"
+    assert split_pipeline(piped_inside_quotes) == [piped_inside_quotes]
+
+
+def test_explain_pipeline_describes_each_stage():
+    from playground import PlaygroundEngine
+
+    # explain_pipeline is pure text processing — it does not touch self.db.
+    engine = PlaygroundEngine.__new__(PlaygroundEngine)
+    stages = engine.explain_pipeline("grep 'ERROR' server.log | awk '{print $NF}' | sort | uniq -c")
+
+    assert [s["tool"] for s in stages] == ["grep", "awk", "sort", "uniq"]
+    assert all(s["description"] for s in stages)
+
+
+def test_timed_mode_override_replaces_challenge_time_limit(tmp_path: Path):
+    from data_manager import DataManager
+    from challenge import ChallengeEngine
+
+    db = DataManager(tmp_path / "shellmentor.db")
+    engine = ChallengeEngine(db)
+    challenge_id = engine._challenges_data[0]["id"]
+
+    # None of the shipped challenges carry their own time_limit.
+    active = engine.start_challenge(challenge_id)
+    assert active.time_limit == 0
+
+    timed = engine.start_challenge(challenge_id, time_limit_override=300)
+    assert timed.time_limit == 300
+
+    untimed_again = engine.start_challenge(challenge_id, time_limit_override=0)
+    assert untimed_again.time_limit == 0
+    db.close()
+
+
+def test_backup_export_import_roundtrip(tmp_path: Path):
+    from data_manager import DataManager
+
+    src = DataManager(tmp_path / "source.db")
+    src.update_user(username="Ada")
+    src.add_xp(500)
+    src.create_note("My Note", "Some content")
+    backup_path = src.export_backup(tmp_path / "backup.json")
+    src.close()
+
+    dst = DataManager(tmp_path / "dest.db")
+    dst.update_user(username="Someone Else")
+    restored = dst.import_backup(backup_path)
+    assert restored["user"] == 1
+    assert restored["notes"] == 1
+
+    user = dst.get_user()
+    assert user["username"] == "Ada"
+    assert user["xp"] == 500
+    assert len(dst.get_notes()) == 1
+    dst.close()
+
+
+def test_import_backup_rejects_unrecognised_file(tmp_path: Path):
+    from data_manager import DataManager
+
+    bogus = tmp_path / "not_a_backup.json"
+    bogus.write_text('{"hello": "world"}')
+
+    db = DataManager(tmp_path / "shellmentor.db")
+    try:
+        db.import_backup(bogus)
+        assert False, "expected ValueError for an unrecognised backup file"
+    except ValueError:
+        pass
+    db.close()
+
+
 if __name__ == "__main__":
     tests = [v for k, v in globals().items() if k.startswith("test_")]
     passed = 0

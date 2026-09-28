@@ -23,7 +23,7 @@ logger = logging.getLogger("shellmentor")
 # ─────────────────────────── Constants ───────────────────────────
 
 APP_NAME = "ShellMentor"
-APP_VERSION = "4.4.0"
+APP_VERSION = "4.5.0"
 APP_TAGLINE = "Professional Linux Command-Line Learning Platform"
 
 WORKSPACE_DIR = Path(__file__).parent / "workspace"
@@ -238,6 +238,44 @@ def truncate(text: str, max_len: int = 60, suffix: str = "…") -> str:
 def format_xp(xp: int) -> str:
     """Format XP with thousands separator."""
     return f"{xp:,} XP"
+
+
+def safe_export_filename(name: str, max_len: int = 80, default: str = "export") -> str:
+    """Sanitise arbitrary text into a filesystem-safe basename (no extension).
+
+    Used for any export written from user-supplied text (note titles, lesson
+    names, ...) so a value like "../.bashrc" cannot escape the export
+    directory it is joined onto.
+    """
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("._")
+    return (safe or default)[:max_len]
+
+
+def split_pipeline(command: str) -> list[str]:
+    """Split a shell command on unquoted `|` characters.
+
+    This is purely textual (used to describe a pipeline for teaching
+    purposes) and never touches the shell — a `|` inside single or double
+    quotes, e.g. `awk '{print $1"|"$2}'`, is left alone.
+    """
+    stages: list[str] = []
+    current: list[str] = []
+    in_single = False
+    in_double = False
+    for ch in command:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            current.append(ch)
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+            current.append(ch)
+        elif ch == "|" and not in_single and not in_double:
+            stages.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    stages.append("".join(current))
+    return [s.strip() for s in stages if s.strip()]
 
 
 def format_duration(seconds: float) -> str:

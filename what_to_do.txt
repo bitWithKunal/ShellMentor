@@ -1,6 +1,6 @@
-ShellMentor v4.4.0 — What To Do
+ShellMentor v4.5.0 — What To Do
 =================================
-Reviewed: July 2026
+Reviewed: September 2026
 
 LEARNING FEATURES — ALL DONE
 -----------------------------
@@ -75,13 +75,51 @@ v4.4.0 IMPROVEMENTS
 
 17. [DONE] Added confirmation dialog before challenge abandon
 
+v4.5.0 IMPROVEMENTS
+--------------------
+18. [DONE] Added Timed Mode toggle per challenge (Challenges browser)
+    Switch + duration picker; default duration set in Settings -> Challenge
+    Preferences. None of the 50 shipped challenges carry their own
+    time_limit, so this is what actually makes the countdown reachable.
+
+19. [DONE] Added "why this works" solution explanations after submit
+    Pipeline broken into stages with a plain-language description of each
+    tool (PlaygroundEngine.explain_pipeline()), shown after solving and on
+    abandon/timeout, not just the raw reference command.
+
+20. [DONE] Added certificate export to file
+    "Save to File" button on the certificate modal writes a text file to
+    ~/ShellMentor_Exports/.
+
+21. [DONE] Added data export/import (backup/restore) in settings
+    Export Backup (JSON) / Import Backup, whole-database round trip with
+    schema-checked column names on import.
+
+22. [DONE] Added unit tests for all of the above
+    test_core.py: explain_pipeline, split_pipeline, safe_export_filename,
+    timed-mode override, backup export/import round trip. test_ui_smoke.py:
+    Timed Mode end to end, Dashboard reset button.
+
+23. [DONE] Theme system overhaul — themes now actually re-skin the app
+    ~160 hardcoded colors across main.py/ui_core.py/ui_screens.py/
+    ui_activities.py replaced with theme variables. Removed themes.yaml's
+    dead css: blocks (never read by build_themes(), confirmed in the 4.4.0
+    review). New default theme: Cyber. Section headers and panels
+    recolored for more variety per screen.
+
+24. [DONE] Fixed two crash-on-launch bugs of the same shape as 4.4.0's
+    `margin: auto` (invalid Textual CSS) in all 5 modals could crash the
+    app before the dashboard appeared. `color: grey50` (valid in Rich
+    markup, not in Textual CSS) in Achievement/Certificate modals meant
+    those popups silently failed to show, swallowed by the achievement
+    callback's exception handler — masked a real bug in the existing
+    mission-completion test, which never actually exercised that modal.
+
 REMAINING WORK
 --------------
-- Add unit tests for new features
-- Add timed mode toggle option per challenge
-- Add certificate export to file
-- Add challenge solution explanations post-submit (not just abandon)
 - Add more challenges (target: 60+)
 - Add more achievements (target: 40+)
-- Add data export/import (backup/restore) in settings
-- Add sandbox timeout setting in settings
+- Restructure into a shellmentor/ package with a [project.scripts] entry
+  point (see issues.txt #0b — deliberately not bundled into a feature
+  release for the same reason it wasn't bundled into 4.4.0's bug-fix one)
+- Add ruff to CI to keep unused imports and dead code from returning

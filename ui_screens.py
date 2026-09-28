@@ -10,7 +10,6 @@ Shared widgets, BaseScreen and modals live in ui_core.py.
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 
 from rich.text import Text
@@ -28,7 +27,7 @@ from textual.widgets import (
 from utils import (
     SystemInfo, get_install_command, load_yaml, THEMES_DIR,
     difficulty_icon, difficulty_color, format_xp, format_duration,
-    truncate, APP_VERSION, APP_NAME,
+    truncate, APP_VERSION, APP_NAME, safe_export_filename,
 )
 
 from ui_core import BaseScreen, ConfirmModal, CertificateModal
@@ -41,7 +40,7 @@ class DashboardScreen(BaseScreen):
 
     DEFAULT_CSS = """
     #dashboard-scroll {
-        background: #0a0e14;
+        background: $background;
         padding: 0;
         height: 1fr;
     }
@@ -51,12 +50,27 @@ class DashboardScreen(BaseScreen):
     }
     .logo-text {
         text-style: bold;
-        color: #00d4ff;
+        color: $primary;
         text-align: center;
     }
     .header-glow {
         text-style: bold;
-        color: #89b4fa;
+        color: $primary;
+    }
+    #dash-actions {
+        height: 3;
+        padding: 0 2;
+        align: right middle;
+        background: $surface;
+        border-bottom: solid $secondary;
+    }
+    #dash-actions Static {
+        width: 1fr;
+        color: $text-muted;
+    }
+    #dash-reset-progress {
+        min-width: 0;
+        margin: 0;
     }
     """
 
@@ -70,6 +84,11 @@ class DashboardScreen(BaseScreen):
         self._cached_recommended = None
 
     def render_content(self) -> ComposeResult:
+        yield Horizontal(
+            Static("  ShellMentor"),
+            Button("⚠  Reset Progress", id="dash-reset-progress", variant="error", compact=True),
+            id="dash-actions",
+        )
         yield ScrollableContainer(
             Static(id="dash-body"),
             id="dashboard-scroll",
@@ -270,6 +289,17 @@ class DashboardScreen(BaseScreen):
 
         body.update(content)
 
+    @on(Button.Pressed, "#dash-reset-progress")
+    def reset_progress_from_dashboard(self) -> None:
+        def handle_confirm(confirmed: bool | None) -> None:
+            if confirmed:
+                self.app.db.reset_all_progress()
+                self.app.show_notification("All progress has been reset", severity="warning")
+                self._refresh_dashboard_data()
+
+        self.app.push_screen(
+            ConfirmModal("Warning: This action cannot be undone. Reset all progress?"), handle_confirm
+        )
 
 
 # ──────────────────────── Screen: Lessons ────────────────────────
@@ -290,10 +320,10 @@ class LessonsScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="lessons-layout"):
             with Vertical(id="lessons-sidebar"):
-                yield Static("LEARNING TRACKS", id="track-header")
+                yield Static("[bold cyan]LEARNING TRACKS[/]", id="track-header")
                 yield ListView(id="tracks-list")
                 yield Rule()
-                yield Static("LESSONS", id="lessons-header")
+                yield Static("[bold green]LESSONS[/]", id="lessons-header")
                 yield ListView(id="lessons-list")
             with ScrollableContainer(id="lesson-content"):
                 yield Static(
@@ -305,12 +335,12 @@ class LessonsScreen(BaseScreen):
     DEFAULT_CSS = """
     #lessons-sidebar {
         width: 40;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #lesson-content {
-        background: #0a0e14;
+        background: $background;
         padding: 1;
     }
     """
@@ -628,8 +658,8 @@ class QuizScreen(Screen):
     #quiz-nav-row {
         height: 3;
         padding: 0 1;
-        border-top: solid #1e2030;
-        background: #0e1117;
+        border-top: solid $secondary;
+        background: $surface;
     }
     """
 
@@ -772,10 +802,10 @@ class PlaygroundScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="pg-layout"):
             with Vertical(id="pg-sidebar"):
-                yield Static("WORKSPACE FILES")
+                yield Static("[bold green]WORKSPACE FILES[/]")
                 yield ListView(id="file-list")
                 yield Rule()
-                yield Static("PIPELINE TEMPLATES")
+                yield Static("[bold magenta]PIPELINE TEMPLATES[/]")
                 yield ListView(id="template-list")
             with Vertical(id="pg-main"):
                 yield RichLog(
@@ -796,28 +826,28 @@ class PlaygroundScreen(BaseScreen):
     DEFAULT_CSS = """
     #pg-sidebar {
         width: 35;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #pg-main {
-        background: #0a0e14;
+        background: $background;
         padding: 1;
     }
     #pg-output {
         height: 1fr;
-        background: #060a0f;
-        border: solid #1e2030;
+        background: $surface-darken-1;
+        border: solid $secondary;
     }
     #pg-input-row {
         height: 3;
         padding: 1;
-        border-top: solid #1e2030;
+        border-top: solid $secondary;
     }
     #pg-prompt {
         width: 3;
         padding: 1 0;
-        color: #89b4fa;
+        color: $primary;
     }
     """
 
@@ -1038,7 +1068,7 @@ class NotesScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="notes-layout"):
             with Vertical(id="notes-sidebar"):
-                yield Static("NOTES")
+                yield Static("[bold dodger_blue1]NOTES[/]")
                 yield Input(placeholder="Search notes...", id="notes-search")
                 yield Rule()
                 yield ListView(id="notes-list")
@@ -1054,12 +1084,12 @@ class NotesScreen(BaseScreen):
     DEFAULT_CSS = """
     #notes-sidebar {
         width: 35;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #notes-editor {
-        background: #0a0e14;
+        background: $background;
         padding: 1;
     }
     #note-content {
@@ -1177,8 +1207,8 @@ class NotesScreen(BaseScreen):
             export_dir.mkdir(exist_ok=True)
             # The title is user input: strip path separators so a note called
             # "../.bashrc" cannot be written outside the export directory.
-            safe = re.sub(r"[^A-Za-z0-9._-]+", "_", title).strip("._") or "note"
-            path = export_dir / f"{safe[:80]}.md"
+            safe = safe_export_filename(title, default="note")
+            path = export_dir / f"{safe}.md"
             path.write_text(f"# {title}\n\n{content}")
             self.app.show_notification(f"Exported to {path}", severity="information")
 
@@ -1200,27 +1230,27 @@ class AnalyticsScreen(BaseScreen):
         padding: 1;
     }
     .analytics-card {
-        background: #0e1117;
-        border: solid #1e2030;
+        background: $surface;
+        border: solid $secondary;
         margin: 1 0;
         padding: 0 1;
     }
     .analytics-title {
         text-style: bold;
-        color: #89b4fa;
+        color: $primary;
         padding: 1 0;
-        border-bottom: solid #1e2030;
+        border-bottom: solid $secondary;
     }
     .stat-row {
         padding: 0 1;
         margin: 0 0;
     }
     .stat-label {
-        color: #585b70;
+        color: $text-muted;
         width: 25;
     }
     .stat-value {
-        color: #89b4fa;
+        color: $primary;
         text-style: bold;
     }
     """
@@ -1245,7 +1275,7 @@ class AnalyticsScreen(BaseScreen):
         widgets = []
 
         # Header
-        widgets.append(Static("\n  [bold cyan]ANALYTICS DASHBOARD[/]  [dim]Learning Statistics[/]\n"))
+        widgets.append(Static("\n  [bold magenta]ANALYTICS DASHBOARD[/]  [dim]Learning Statistics[/]\n"))
         widgets.append(Rule())
 
         # Learning Progress Card
@@ -1411,14 +1441,14 @@ class SettingsScreen(BaseScreen):
     .settings-section {
         margin-bottom: 1;
         padding: 0 1;
-        border: solid #1e2030;
-        background: #0e1117;
+        border: solid $secondary;
+        background: $primary 10%;
     }
     .settings-section-header {
         padding: 1 0;
         text-style: bold;
-        color: #89b4fa;
-        border-bottom: solid #1e2030;
+        color: $primary;
+        border-bottom: solid $secondary;
     }
     .settings-row {
         padding: 0 1;
@@ -1426,31 +1456,31 @@ class SettingsScreen(BaseScreen):
     }
     .settings-label {
         margin-bottom: 0;
-        color: #cdd6f4;
+        color: $text;
         text-style: bold;
     }
     .settings-hint {
-        color: #585b70;
+        color: $text-muted;
         text-style: italic;
         margin-top: 0;
     }
     .shortcut-grid {
         margin: 1 0;
         padding: 1;
-        background: #0a0e14;
-        border: solid #1e2030;
+        background: $background;
+        border: solid $secondary;
     }
     .shortcut-row {
         margin: 0 0;
         padding: 0 1;
     }
     .shortcut-key {
-        color: #89b4fa;
+        color: $primary;
         text-style: bold;
         width: 12;
     }
     .shortcut-desc {
-        color: #cdd6f4;
+        color: $text;
     }
     Button {
         margin: 0 1 0 0;
@@ -1474,7 +1504,7 @@ class SettingsScreen(BaseScreen):
         """Build and mount all settings widgets into *scroll*."""
 
         user = self.app.db.get_user()
-        current_theme = user.get("theme", "professional_dark")
+        current_theme = user.get("theme", "cyber")
 
         # Prefer the app's registered theme ids (includes all YAML themes)
         if hasattr(self.app, "theme_ids"):
@@ -1486,8 +1516,8 @@ class SettingsScreen(BaseScreen):
         # Fallback so the dropdown always has options
         if not theme_list:
             theme_list = [
-                "professional_dark", "professional_light", "nord",
-                "dracula", "matrix", "solarized", "cyber",
+                "cyber", "dracula", "professional_dark",
+                "professional_light", "nord", "matrix", "solarized",
             ]
 
         # Validate saved theme
@@ -1503,7 +1533,7 @@ class SettingsScreen(BaseScreen):
         widget_list = []
 
         # ── Header ──
-        widget_list.append(Static("\n  [bold cyan]⚙  SETTINGS[/]  [dim]Configure ShellMentor[/]\n"))
+        widget_list.append(Static("\n  [bold white]⚙  SETTINGS[/]  [dim]Configure ShellMentor[/]\n"))
         widget_list.append(Rule())
 
         # ── PROFILE ──
@@ -1524,7 +1554,7 @@ class SettingsScreen(BaseScreen):
 
         # ── APPEARANCE ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold cyan]🎨  APPEARANCE[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold magenta]🎨  APPEARANCE[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
         widget_list.append(Static("  Theme", classes="settings-label"))
         widget_list.append(Static(
@@ -1552,7 +1582,7 @@ class SettingsScreen(BaseScreen):
 
         # ── DATA MANAGEMENT ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold cyan]🗄  DATA MANAGEMENT[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold gold1]🗄  DATA MANAGEMENT[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
         widget_list.append(Static("  Database Location", classes="settings-label"))
         widget_list.append(Static(f"  [dim]{self.app.db.db_path}[/dim]", classes="settings-hint"))
@@ -1561,12 +1591,43 @@ class SettingsScreen(BaseScreen):
             classes="settings-hint"
         ))
         widget_list.append(Button("📄  Export Portfolio (Markdown)", id="export-portfolio", variant="primary"))
+        widget_list.append(Static(""))
+        widget_list.append(Static("  Backup & Restore", classes="settings-label"))
+        widget_list.append(Static(
+            "  Save everything — progress, notes, achievements, history — to one "
+            "JSON file, or restore it later (including on a different machine).",
+            classes="settings-hint"
+        ))
+        widget_list.append(Button("💾  Export Backup (JSON)", id="export-backup", variant="primary"))
+        widget_list.append(Static("  Restore from a backup file  [dim](this replaces all current progress)[/]", classes="settings-hint"))
+        widget_list.append(Input(placeholder="/path/to/shellmentor_backup_....json", id="import-path-input"))
+        widget_list.append(Button("📥  Import Backup", id="import-backup", variant="warning"))
+        widget_list.append(Static(""))
         widget_list.append(Button("⚠  Reset All Progress", id="reset-progress", variant="error"))
+        widget_list.append(Static(""))
+
+        # ── CHALLENGE PREFERENCES ──
+        widget_list.append(Rule())
+        widget_list.append(Static("\n  [bold orange1]⏱  CHALLENGE PREFERENCES[/]", classes="settings-section-header"))
+        widget_list.append(Static(""))
+        widget_list.append(Static("  Default Timed Mode Duration", classes="settings-label"))
+        widget_list.append(Static(
+            "  Used to pre-fill the countdown whenever you switch on Timed Mode "
+            "for a challenge — Ctrl+H, pick a challenge, toggle Timed Mode.",
+            classes="settings-hint"
+        ))
+        saved_minutes = int(self.app.db.get_setting("timed_challenge_minutes", 5))
+        widget_list.append(Select(
+            [("2 minutes", 2), ("5 minutes", 5), ("10 minutes", 10), ("15 minutes", 15)],
+            id="timer-duration-select",
+            allow_blank=False,
+            value=saved_minutes if saved_minutes in (2, 5, 10, 15) else 5,
+        ))
         widget_list.append(Static(""))
 
         # ── KEYBOARD SHORTCUTS ──
         widget_list.append(Rule())
-        widget_list.append(Static("\n  [bold cyan]⌨  KEYBOARD SHORTCUTS[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold green]⌨  KEYBOARD SHORTCUTS[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
 
         shortcuts = [
@@ -1596,7 +1657,7 @@ class SettingsScreen(BaseScreen):
         widget_list.append(Rule())
 
         # ── ABOUT ──
-        widget_list.append(Static("\n  [bold cyan]ℹ  ABOUT[/]", classes="settings-section-header"))
+        widget_list.append(Static("\n  [bold dodger_blue1]ℹ  ABOUT[/]", classes="settings-section-header"))
         widget_list.append(Static(""))
         widget_list.append(Static(
             f"  [bold cyan]{APP_NAME}[/]  [dim]v{APP_VERSION}[/]\n"
@@ -1675,6 +1736,51 @@ class SettingsScreen(BaseScreen):
         self.app.show_notification(
             f"Portfolio exported: {path}", severity="information"
         )
+
+    @on(Button.Pressed, "#export-backup")
+    def export_backup(self) -> None:
+        try:
+            path = self.app.db.export_backup()
+        except OSError as exc:
+            self.app.show_notification(f"Backup failed: {exc}", severity="error")
+            return
+        self.app.show_notification(f"Backup exported: {path}", severity="information")
+        self.query_one("#import-path-input", Input).value = str(path)
+
+    @on(Button.Pressed, "#import-backup")
+    def import_backup(self) -> None:
+        path_text = self.query_one("#import-path-input", Input).value.strip()
+        if not path_text:
+            self.app.show_notification("Enter the path to a backup file first", severity="warning")
+            return
+
+        def handle_confirm(confirmed: bool | None) -> None:
+            if not confirmed:
+                return
+            try:
+                restored = self.app.db.import_backup(Path(path_text))
+            except (OSError, ValueError) as exc:
+                self.app.show_notification(f"Import failed: {exc}", severity="error")
+                return
+            total = sum(restored.values())
+            self.app.show_notification(
+                f"Backup restored: {total} rows across {len(restored)} tables", severity="information"
+            )
+            self._build_settings()
+
+        self.app.push_screen(
+            ConfirmModal("Warning: this replaces ALL current progress with the backup. Continue?"),
+            handle_confirm,
+        )
+
+    @on(Select.Changed, "#timer-duration-select")
+    def save_timer_duration(self, event: Select.Changed) -> None:
+        if event.value and event.value != Select.BLANK:
+            self.app.db.set_setting("timed_challenge_minutes", int(event.value))
+            self.app.show_notification(
+                f"Default timed-challenge duration set to {event.value} minutes",
+                severity="information",
+            )
 
     @on(Button.Pressed, "#reset-progress")
     def reset_progress(self) -> None:
@@ -1791,7 +1897,7 @@ class GitHubSpaceScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="gh-layout"):
             with Vertical(id="gh-sidebar"):
-                yield Static("GIT COMMAND GUIDES")
+                yield Static("[bold magenta]GIT COMMAND GUIDES[/]")
                 yield Button("Show git init",   id="git-init",      variant="primary")
                 yield Button("Show git status", id="git-status",    variant="default")
                 yield Button("Show git add .",  id="git-add",       variant="default")
@@ -1800,7 +1906,7 @@ class GitHubSpaceScreen(BaseScreen):
                 yield Button("Show git pull",   id="git-pull",      variant="warning")
                 yield Button("Show git log",    id="git-log",       variant="default")
                 yield Rule()
-                yield Static("REPO PATH")
+                yield Static("[bold cyan]REPO PATH[/]")
                 yield Input(value=self._repo_path, id="repo-path-input")
                 yield Button("Set Path", id="set-repo-path", variant="primary")
             with Vertical(id="gh-main"):
@@ -1810,13 +1916,13 @@ class GitHubSpaceScreen(BaseScreen):
     #gh-layout { height: 1fr; }
     #gh-sidebar {
         width: 30;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #gh-sidebar Button { width: 100%; margin: 0 0 1 0; }
-    #gh-main { background: #0a0e14; padding: 1; }
-    #gh-output { height: 1fr; background: #060a0f; border: solid #1e2030; }
+    #gh-main { background: $background; padding: 1; }
+    #gh-output { height: 1fr; background: $surface-darken-1; border: solid $secondary; }
     """
 
     def on_mount(self) -> None:

@@ -23,7 +23,7 @@ from textual.containers import Horizontal, Vertical, ScrollableContainer
 from textual.screen import Screen
 from textual.widgets import (
     Button, Footer, Header, Input, Label, ListItem, ListView,
-    RichLog, Rule, Select, Static,
+    RichLog, Rule, Select, Static, Switch,
 )
 
 from utils import difficulty_icon, difficulty_color, rarity_color
@@ -44,7 +44,7 @@ class ChallengesScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="ch-layout"):
             with Vertical(id="ch-sidebar"):
-                yield Static("CHALLENGES")
+                yield Static("[bold orange1]CHALLENGES[/]")
                 yield Select(
                     [(d, d) for d in ["all", "beginner", "intermediate", "advanced", "expert"]],
                     id="diff-filter",
@@ -54,6 +54,15 @@ class ChallengesScreen(BaseScreen):
                 yield Rule()
                 yield ListView(id="ch-list")
                 yield Rule()
+                with Horizontal(id="ch-timed-row"):
+                    yield Static("⏱ Timed Mode", id="ch-timed-label")
+                    yield Switch(value=False, id="ch-timed-switch")
+                yield Select(
+                    [("2 min", 120), ("5 min", 300), ("10 min", 600), ("15 min", 900)],
+                    id="ch-timed-duration",
+                    value=300,
+                    allow_blank=False,
+                )
                 with Horizontal():
                     yield Button("Start", id="ch-start", variant="primary")
             with Vertical(id="ch-main"):
@@ -62,19 +71,35 @@ class ChallengesScreen(BaseScreen):
     DEFAULT_CSS = """
     #ch-sidebar {
         width: 40;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #ch-main {
-        background: #0a0e14;
+        background: $background;
         padding: 1;
+    }
+    #ch-timed-row {
+        height: 3;
+        align: left middle;
+    }
+    #ch-timed-row #ch-timed-label {
+        width: 1fr;
+        color: $text;
     }
     """
 
     def on_mount(self) -> None:
         self._populate_challenges()
         self._show_difficulty_suggestion()
+        # Seed the duration picker from the user's saved default (Settings ->
+        # Challenge Timer); the switch itself always starts off, since a
+        # timed run is an explicit per-attempt opt-in.
+        minutes = self.app.db.get_setting("timed_challenge_minutes", 5)
+        seconds = int(minutes) * 60
+        valid_durations = {120, 300, 600, 900}
+        duration_select = self.query_one("#ch-timed-duration", Select)
+        duration_select.value = seconds if seconds in valid_durations else 300
 
     @work(exclusive=True)
     async def _show_difficulty_suggestion(self) -> None:
@@ -162,7 +187,9 @@ class ChallengesScreen(BaseScreen):
         if not cid:
             self.app.show_notification("Select a challenge first", severity="warning")
             return
-        self.app.push_screen(ChallengeScreen(cid))
+        timed = self.query_one("#ch-timed-switch", Switch).value
+        time_override = int(self.query_one("#ch-timed-duration", Select).value) if timed else None
+        self.app.push_screen(ChallengeScreen(cid, time_limit_override=time_override))
 
 
 class ChallengeScreen(Screen):
@@ -176,9 +203,10 @@ class ChallengeScreen(Screen):
         Binding("ctrl+q", "quit", "Quit"),
     ]
 
-    def __init__(self, challenge_id: str, **kwargs):
+    def __init__(self, challenge_id: str, time_limit_override: int | None = None, **kwargs):
         super().__init__(**kwargs)
         self.challenge_id = challenge_id
+        self.time_limit_override = time_limit_override
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -212,14 +240,14 @@ class ChallengeScreen(Screen):
     #cs-output {
         height: 1fr;
         min-height: 5;
-        background: #060a0f;
-        border: solid #1e2030;
+        background: $surface-darken-1;
+        border: solid $secondary;
         margin: 0 1;
     }
     #cs-input-row {
         height: 3;
         padding: 0 1;
-        border-top: solid #1e2030;
+        border-top: solid $secondary;
     }
     #cs-input-row #cs-input {
         width: 1fr;
@@ -230,7 +258,7 @@ class ChallengeScreen(Screen):
     #cs-prompt {
         width: 3;
         padding: 1 0;
-        color: #89b4fa;
+        color: $primary;
     }
     #cs-button-row {
         height: 3;
@@ -244,7 +272,9 @@ class ChallengeScreen(Screen):
     """
 
     def on_mount(self) -> None:
-        self._active = self.app.challenge_engine.start_challenge(self.challenge_id)
+        self._active = self.app.challenge_engine.start_challenge(
+            self.challenge_id, time_limit_override=self.time_limit_override,
+        )
         if not self._active:
             self.app.pop_screen()
             return
@@ -260,7 +290,8 @@ class ChallengeScreen(Screen):
             f"{len(ch.get('hints', []))} hints available[/]\n"
         ))
 
-        # Start countdown timer if challenge has time limit
+        # Start countdown timer if a time limit is active — either the
+        # challenge's own, or the Timed Mode override chosen before starting.
         if self._active.time_limit > 0:
             self._refresh_time_display()
             self._timer = self.set_interval(1.0, self._tick_timer)
@@ -300,6 +331,25 @@ class ChallengeScreen(Screen):
             timer.stop()
             self._timer = None
 
+    def _write_explanation(self, output: RichLog, solution: str) -> None:
+        """Write a stage-by-stage breakdown of *solution* to the output log.
+
+        Purely descriptive — built from PlaygroundEngine.explain_pipeline(),
+        which never runs the command. This is the "why this works" companion
+        to just printing the reference command.
+        """
+        if not solution:
+            return
+        stages = self.app.playground_engine.explain_pipeline(solution)
+        if len(stages) <= 1:
+            return
+        output.write(Text.from_markup("[bold]Why this works:[/]"))
+        for stage in stages:
+            output.write(Text.from_markup(
+                f"  [cyan]{stage['stage']}.[/] [bold]{stage['command']}[/] "
+                f"[grey50]— {stage['description']}[/]"
+            ))
+
     def _on_timeout(self) -> None:
         output = self.query_one("#cs-output", RichLog)
         output.write(Text.from_markup(
@@ -313,6 +363,7 @@ class ChallengeScreen(Screen):
             output.write(Text.from_markup(
                 f"[bold]Solution:[/] {info['solution']}\n"
             ))
+            self._write_explanation(output, info["solution"])
         self.app.show_notification("Time's up! Challenge abandoned.", severity="warning")
 
     @on(Input.Submitted, "#cs-input")
@@ -361,6 +412,7 @@ class ChallengeScreen(Screen):
                 f"Hints: {submit_result['hints_used']}[/]\n"
                 f"[dim]Reference: {submit_result.get('solution','')}[/]"
             ))
+            self._write_explanation(output, submit_result.get("solution", ""))
             self.app.show_notification(
                 f"Challenge Solved! +{xp} XP", severity="information"
             )
@@ -381,7 +433,9 @@ class ChallengeScreen(Screen):
 
     @on(Button.Pressed, "#cs-retry")
     def retry_challenge(self) -> None:
-        self._active = self.app.challenge_engine.start_challenge(self.challenge_id)
+        self._active = self.app.challenge_engine.start_challenge(
+            self.challenge_id, time_limit_override=self.time_limit_override,
+        )
         if not self._active:
             return
         # Clear output and reset
@@ -456,7 +510,7 @@ class MissionsScreen(BaseScreen):
     def render_content(self) -> ComposeResult:
         with Horizontal(id="ms-layout"):
             with Vertical(id="ms-sidebar"):
-                yield Static("MISSIONS")
+                yield Static("[bold gold1]MISSIONS[/]")
                 yield ListView(id="ms-list")
                 yield Button("Start Mission", id="ms-start", variant="primary")
                 yield Rule()
@@ -467,12 +521,12 @@ class MissionsScreen(BaseScreen):
     DEFAULT_CSS = """
     #ms-sidebar {
         width: 40;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $surface;
+        border-right: solid $secondary;
         padding: 1;
     }
     #ms-detail {
-        background: #0a0e14;
+        background: $background;
         padding: 1;
     }
     Button {
@@ -610,24 +664,24 @@ class MissionScreen(Screen):
         max-height: 10;
         height: auto;
         padding: 0 1;
-        border-bottom: solid #1e2030;
+        border-bottom: solid $secondary;
     }
     #mission-output {
         height: 1fr;
         min-height: 5;
-        background: #060a0f;
-        border: solid #1e2030;
+        background: $surface-darken-1;
+        border: solid $secondary;
         margin: 0 1;
     }
     #mission-prompt {
         width: 3;
         padding: 1 0;
-        color: #89b4fa;
+        color: $primary;
     }
     #mission-input-row {
         height: 3;
         padding: 0 1;
-        border-top: solid #1e2030;
+        border-top: solid $secondary;
     }
     #mission-input-row #mission-input {
         width: 1fr;
@@ -797,7 +851,7 @@ class AchievementsScreen(BaseScreen):
         height: 3;
         padding: 0 1;
         align: left middle;
-        border-top: solid #1e2030;
+        border-top: solid $secondary;
     }
     #ach-button-row Button {
         width: 16;
@@ -824,7 +878,7 @@ class AchievementsScreen(BaseScreen):
         all_ach = self.app.progress_engine.get_full_achievements_list()
 
         widgets = [Static(
-            f"\n  [bold cyan]ACHIEVEMENTS[/]  "
+            f"\n  [bold gold1]ACHIEVEMENTS[/]  "
             f"[grey50]{stats['earned']}/{stats['total']} earned "
             f"({stats['percent']:.0f}%)[/]\n"
         )]

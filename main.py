@@ -131,44 +131,50 @@ def build_themes() -> dict[str, Theme]:
 # ──────────────────────── CSS ────────────────────────
 
 SHELLMENTOR_CSS = """
+/* Every rule below reads from the active Theme's variables ($primary,
+ * $surface, $border, ...) instead of a fixed hex value, so picking a theme
+ * in Settings actually re-skins the whole app instead of only the few
+ * widgets that happened to use Textual's own defaults. */
+
 /* ── Base ──────────────────────────────────────────── */
 Screen {
-    background: #0a0e14;
-    color: #cdd6f4;
+    background: $background;
+    color: $text;
 }
 
 Header {
-    background: #0e1117;
-    color: #89b4fa;
-    border-bottom: solid #1e2030;
+    background: $secondary 15%;
+    color: $primary;
+    border-bottom: heavy $secondary;
+    text-style: bold;
 }
 
 Footer {
-    background: #0e1117;
-    color: #585b70;
-    border-top: solid #1e2030;
+    background: $secondary 15%;
+    color: $text-muted;
+    border-top: heavy $secondary;
 }
 
 /* ── Sidebar panels ────────────────────────────────── */
 #lessons-sidebar, #ch-sidebar, #ms-sidebar,
 #notes-sidebar, #pg-sidebar {
     width: 30;
-    background: #0e1117;
-    border-right: solid #1e2030;
+    background: $primary 10%;
+    border-right: heavy $secondary;
     padding: 0 1;
 }
 
 /* ── Content areas ─────────────────────────────────── */
 #lesson-content, #ch-detail, #ms-detail,
 #notes-editor, #pg-main {
-    background: #0a0e14;
+    background: $background;
     padding: 0 1;
 }
 
 /* ── Playground output terminal ────────────────────── */
 #pg-output {
-    background: #060a0f;
-    border: solid #1e2030;
+    background: $surface-darken-1;
+    border: solid $secondary;
     margin: 0 1;
 }
 
@@ -176,13 +182,14 @@ Footer {
     height: 3;
     padding: 0 1;
     margin: 0;
-    border-top: solid #1e2030;
+    border-top: solid $secondary;
 }
 
 #pg-prompt {
     width: 3;
     padding: 1 0;
-    color: #89b4fa;
+    color: $primary;
+    text-style: bold;
 }
 
 /* ── Dashboard ─────────────────────────────────────── */
@@ -196,115 +203,139 @@ Footer {
 
 /* ── Input ─────────────────────────────────────────── */
 Input {
-    background: #0e1117;
-    color: #cdd6f4;
-    border: solid #1e2030;
+    background: $surface;
+    color: $text;
+    border: solid $secondary;
 }
 
 Input:focus {
-    border: solid #89b4fa;
+    border: solid $primary;
 }
 
 /* ── Buttons ───────────────────────────────────────── */
 Button {
-    background: #1e2030;
-    color: #cdd6f4;
-    border: solid #313244;
+    background: $panel;
+    color: $text;
+    border: solid $secondary;
     margin: 0 1 1 0;
+    text-style: bold;
 }
 
 Button:hover {
-    background: #313244;
-    color: #cdd6f4;
+    background: $panel-lighten-1;
+    color: $text;
 }
 
+Button:focus {
+    border: solid $primary;
+}
+
+/* Variant buttons keep a neutral $panel background at rest — $panel is
+ * guaranteed distinct from every accent color in every shipped theme, unlike
+ * pairing an accent with its own "-background"/"-muted" shade, which came
+ * out IDENTICAL to the accent itself under Professional Light (invisible
+ * button text). On hover the background goes solid; `color: auto` there
+ * picks black or white for contrast instead of a hardcoded white, which
+ * would fail against a bright accent (Matrix, Cyber). */
 Button.-primary {
-    background: #1e3a5f;
-    color: #89b4fa;
-    border: solid #1e6feb;
+    background: $panel;
+    color: $primary;
+    border: solid $primary;
 }
 
 Button.-primary:hover {
-    background: #1e6feb;
-    color: #ffffff;
+    background: $primary;
+    color: auto;
 }
 
 Button.-success {
-    background: #1a3a2a;
-    color: #a6e3a1;
-    border: solid #2ea043;
+    background: $panel;
+    color: $success;
+    border: solid $success;
 }
 
 Button.-success:hover {
-    background: #2ea043;
-    color: #ffffff;
+    background: $success;
+    color: auto;
+}
+
+Button.-warning {
+    background: $panel;
+    color: $warning;
+    border: solid $warning;
+}
+
+Button.-warning:hover {
+    background: $warning;
+    color: auto;
 }
 
 Button.-error {
-    background: #3a1a1a;
-    color: #f38ba8;
-    border: solid #b91c1c;
+    background: $panel;
+    color: $error;
+    border: solid $error;
 }
 
 Button.-error:hover {
-    background: #b91c1c;
-    color: #ffffff;
+    background: $error;
+    color: auto;
 }
 
 /* ── ListView ──────────────────────────────────────── */
 ListView {
-    background: #0e1117;
-    border: solid #1e2030;
+    background: $surface;
+    border: solid $secondary;
     height: 1fr;
 }
 
 ListItem {
     padding: 0 1;
-    color: #cdd6f4;
+    color: $text;
 }
 
 ListItem:hover {
-    background: #1e2030;
+    background: $border;
 }
 
 ListItem.-highlighted {
-    background: #1e2030;
+    background: $panel;
+    color: $primary;
 }
 
 /* ── ScrollableContainer ───────────────────────────── */
 ScrollableContainer {
-    background: #0a0e14;
+    background: $background;
 }
 
 /* ── TextArea ──────────────────────────────────────── */
 TextArea {
-    background: #060a0f;
-    color: #cdd6f4;
-    border: solid #1e2030;
+    background: $surface-darken-1;
+    color: $text;
+    border: solid $secondary;
     height: 1fr;
 }
 
 TextArea:focus {
-    border: solid #89b4fa;
+    border: solid $primary;
 }
 
 /* ── Select ────────────────────────────────────────── */
 Select {
-    background: #0e1117;
-    color: #cdd6f4;
-    border: solid #1e2030;
+    background: $surface;
+    color: $text;
+    border: solid $secondary;
     width: 32;
 }
 
 /* ── Rule ──────────────────────────────────────────── */
 Rule {
-    color: #1e2030;
+    color: $border;
     margin: 1 0;
 }
 
 /* ── RichLog (terminals) ───────────────────────────── */
 RichLog {
-    background: #060a0f;
+    background: $surface-darken-1;
     height: 1fr;
 }
 
@@ -316,23 +347,23 @@ RichLog {
 
 #cs-output, #mission-output {
     height: 1fr;
-    background: #060a0f;
-    border: solid #1e2030;
+    background: $surface-darken-1;
+    border: solid $secondary;
     margin: 0 1;
 }
 
 #cs-input-row, #mission-input-row {
     height: 3;
     padding: 0 1;
-    border-top: solid #1e2030;
+    border-top: solid $secondary;
 }
 
-#cs-prompt { width: 3; padding: 1 0; color: #89b4fa; }
+#cs-prompt { width: 3; padding: 1 0; color: $primary; text-style: bold; }
 
 #mission-info {
     max-height: 10;
     padding: 0 1;
-    border-bottom: solid #1e2030;
+    border-bottom: solid $secondary;
 }
 
 /* ── Settings / Analytics ──────────────────────────── */
@@ -348,17 +379,18 @@ ModalScreen {
 
 /* ── DataTable ─────────────────────────────────────── */
 DataTable {
-    background: #0e1117;
-    border: solid #1e2030;
+    background: $surface;
+    border: solid $secondary;
 }
 
 DataTable > .datatable--header {
-    background: #1e2030;
-    color: #89b4fa;
+    background: $border;
+    color: $primary;
+    text-style: bold;
 }
 
 DataTable > .datatable--cursor {
-    background: #1e3a5f 80%;
+    background: $primary 40%;
 }
 """
 
@@ -418,15 +450,15 @@ class CommandPaletteScreen(Screen):
         background: rgba(0,0,0,0.7);
     }
     #palette-container {
-        background: #161b22;
-        border: solid #00d4ff;
+        background: $surface;
+        border: solid $primary;
         width: 50;
         height: 22;
         padding: 1;
     }
     #palette-list {
         height: 16;
-        background: #161b22;
+        background: $surface;
     }
     """
 

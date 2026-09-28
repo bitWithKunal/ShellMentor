@@ -65,7 +65,7 @@ class DataManager:
                 challenge_streak INTEGER DEFAULT 0,
                 last_active   TEXT,
                 created_at    TEXT DEFAULT (datetime('now')),
-                theme         TEXT DEFAULT 'professional_dark',
+                theme         TEXT DEFAULT 'cyber',
                 settings      TEXT DEFAULT '{}'
             );
 
@@ -879,7 +879,7 @@ class DataManager:
 
     def get_theme(self) -> str:
         user = self.get_user()
-        return user.get("theme", "professional_dark")
+        return user.get("theme", "cyber")
 
     def set_theme(self, theme_name: str) -> None:
         self.update_user(theme=theme_name)
@@ -1004,7 +1004,7 @@ class DataManager:
     def reset_all_progress(self) -> None:
         """Reset all user progress, achievements, and history. Preserves theme and settings."""
         user = self.get_user()
-        theme = user.get("theme", "professional_dark")
+        theme = user.get("theme", "cyber")
         settings = user.get("settings", "{}")
         self.conn.executescript("""
             DELETE FROM lesson_history;
@@ -1026,3 +1026,89 @@ class DataManager:
         self.conn.commit()
         # Personal notes are deliberately preserved; only progress is reset.
         self.set_setting("portfolio_generated", False)
+
+    # ── Backup & Restore ───────────────────────────────────────
+
+    # Every table holding user data, in an order safe to reload in (no table
+    # here is referenced by another table's FOREIGN KEY, so order doesn't
+    # matter for integrity, but it keeps a stable, readable export).
+    BACKUP_TABLES = [
+        "user", "progress", "lesson_history", "challenge_history",
+        "mission_history", "achievements", "notes", "sessions",
+        "command_history", "analytics", "bookmarks", "certificates",
+    ]
+
+    def export_backup(self, output_path: Path | None = None) -> Path:
+        """Dump every user-data table to a single JSON file and return its path."""
+        if output_path is None:
+            export_dir = Path.home() / "ShellMentor_Exports"
+            export_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = export_dir / f"shellmentor_backup_{stamp}.json"
+
+        payload = {
+            "app": "ShellMentor",
+            "backup_version": 1,
+            "exported_at": datetime.now().isoformat(timespec="seconds"),
+            "tables": {
+                table: [dict(row) for row in self.conn.execute(f"SELECT * FROM {table}").fetchall()]
+                for table in self.BACKUP_TABLES
+            },
+        }
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        logger.info(f"Backup exported to {output_path}")
+        return output_path
+
+    def import_backup(self, input_path: Path) -> dict[str, int]:
+        """Replace all local data with the contents of a backup file.
+
+        Returns {table: row_count} for what was restored. Column names from
+        the file are checked against the live schema (PRAGMA table_info)
+        before being used to build SQL, the same defensive whitelist used
+        elsewhere for user-influenced column names, so a hand-edited backup
+        cannot inject arbitrary SQL through a crafted key.
+        """
+        payload = json.loads(Path(input_path).read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or payload.get("app") != "ShellMentor" \
+                or not isinstance(payload.get("tables"), dict):
+            raise ValueError("This file is not a recognised ShellMentor backup.")
+
+        tables = payload["tables"]
+        conn = self.conn
+        # progress.user_id has a FOREIGN KEY on user.id, so "user" must be
+        # deleted only after "progress" (its one dependent) is already gone.
+        # BACKUP_TABLES lists user before progress for insertion order, so
+        # the delete pass runs it in reverse.
+        for table in reversed(self.BACKUP_TABLES):
+            conn.execute(f"DELETE FROM {table}")
+
+        restored: dict[str, int] = {}
+        for table in self.BACKUP_TABLES:
+            rows = tables.get(table)
+            if not isinstance(rows, list):
+                restored[table] = 0
+                continue
+            valid_columns = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            count = 0
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                columns = [c for c in row.keys() if c in valid_columns]
+                if not columns:
+                    continue
+                placeholders = ", ".join("?" for _ in columns)
+                col_list = ", ".join(columns)
+                conn.execute(
+                    f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})",
+                    tuple(row[c] for c in columns),
+                )
+                count += 1
+            restored[table] = count
+        # A backup taken before the user or progress row existed would leave
+        # the app without its singleton rows; put them back if so.
+        conn.execute("INSERT OR IGNORE INTO user (id, username) VALUES (1, 'Learner')")
+        conn.execute("INSERT OR IGNORE INTO progress (id, user_id) VALUES (1, 1)")
+        conn.commit()
+        logger.info(f"Backup restored from {input_path}: {restored}")
+        return restored

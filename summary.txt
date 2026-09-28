@@ -1,44 +1,49 @@
-ShellMentor v4.4.0 — Project Summary
+ShellMentor v4.5.0 — Project Summary
 ======================================
 Professional Linux Command-Line Learning Platform
-Author: Kunal Saraswat | License: MIT | July 2026
+Author: Kunal Saraswat | License: MIT | September 2026
 
 WHAT IT IS
 ----------
 Terminal-based (TUI) learning platform for Linux command-line skills.
 Built with Python 3.10+ and Textual framework. All data stored locally
-in SQLite. No external services required.
+in SQLite. No external services required. Submissions are graded
+structurally against a reference solution — nothing a learner types is
+ever executed (zero subprocess/os.system/eval/exec calls anywhere).
 
 CODEBASE
 --------
-14 Python files | ~7,400 lines | 4 JSON data files | 7 YAML themes
+14 Python files | ~8,000 lines | 4 JSON data files | 7 YAML themes
 
-main.py          697 lines  App entry, themes, keybindings, lifecycle
-ui.py             73 lines  Re-export shim
-ui_core.py       490 lines  BaseScreen, NavButton, modals (5)
-ui_screens.py  1,710 lines  Dashboard, Lessons, Quiz, Playground, Notes,
-                            Analytics, Settings, EnvScan (8 screens)
-ui_activities.py  776 lines  Challenges, Missions, Achievements
-learning.py      440 lines  Lesson/quiz engine, bookmarks, resume, certificates
-challenge.py     345 lines  Challenge/mission validation, XP, streak, timers
-playground.py    479 lines  Command execution, autocomplete, sessions
-progress.py      311 lines  XP, levels, achievements, portfolio
-data_manager.py  800 lines  SQLite persistence (11 tables)
-utils.py         618 lines  Sandbox engine, system detection, utilities
-sandbox.py       463 lines  Extended sandbox (unused)
-test_core.py      70 lines  6 basic tests
+main.py            750 lines  App entry, theme registry, keybindings, lifecycle
+ui.py               71 lines  Re-export shim
+ui_core.py         478 lines  BaseScreen, NavButton, modals (5)
+ui_screens.py    1,977 lines  Dashboard, Lessons, Quiz, Playground, Notes,
+                              Analytics, Settings, EnvScan (8 screens)
+ui_activities.py   910 lines  Challenges, Missions, Achievements
+learning.py        476 lines  Lesson/quiz engine, bookmarks, resume, certificates
+challenge.py       394 lines  Challenge/mission validation, XP, streak, timers
+playground.py      641 lines  Command recording, autocomplete, pipeline help
+progress.py        321 lines  XP, levels, achievements, portfolio
+data_manager.py  1,114 lines  SQLite persistence (13 tables), backup/restore
+utils.py           484 lines  System detection, text utilities (no execution)
+test_core.py       171 lines  13 engine-level tests
+test_ui_smoke.py   221 lines  7 headless-pilot UI tests
 
 FEATURES
 --------
-1. Structured Lessons    — 3 tracks, 25+ lessons with sections/exercises/quizzes
-2. Command Playground    — Sandboxed execution, 50+ autocomplete templates
-3. Challenges            — 50 scored exercises with hints, timers, and validation
-4. Missions              — Multi-stage narrative learning objectives
-5. Gamification          — 12-level ranking (Novice -> Grandmaster), 25+ achievements
+1. Structured Lessons    — 14 tracks, 43 lessons with sections/exercises/quizzes
+2. Command Lab           — Non-executing practice, 50+ autocomplete templates
+3. Challenges            — 50 scored exercises with hints, opt-in Timed Mode,
+                            and a "why this works" solution breakdown
+4. Missions              — 10 multi-stage narrative learning objectives
+5. Gamification          — 12-level ranking (Novice -> Grandmaster), 31 achievements
 6. Notes                 — Search, edit, save, export
 7. Analytics             — Progress stats, command usage, challenge breakdown
-8. Theming               — YAML-based themes with live switching
-9. Safety                — 50+ blocked commands, 17 blocked patterns
+8. Theming               — 7 themes that actually re-skin the whole app via
+                            Textual CSS variables, live switching
+9. Backup & Restore      — One-file JSON export/import of all progress
+10. Certificates          — Lesson completion certificates, saveable to file
 
 ARCHITECTURE
 ------------
@@ -69,15 +74,30 @@ Level 12: ShellMentor Grandmaster (50,000 XP)
 WHAT WORKS WELL
 ---------------
 - BaseScreen pattern eliminates UI duplication
-- Sandbox is genuinely secure
+- The no-execution policy is real, not decorative — structural grading only
 - Achievement triggers handle AND/OR without eval()
 - Command translator and regex visualizer add real pedagogical value
-- Theme system with live preview is polished
-- Data layer has proper schema, WAL, foreign keys
+- Theme system re-skins the whole app, not just a handful of widgets
+- Data layer has proper schema, WAL, foreign keys, and a JSON backup/restore path
 - Challenge streak bonus incentivizes consecutive solving
-- Certificate modal rewards high-score completion
-- Timer mode adds urgency to challenges
+- Certificate modal rewards high-score completion and can be saved to file
+- Opt-in Timed Mode adds urgency to challenges without forcing it on every one
 - Bookmark/resume system for lesson continuity
+
+NEW IN v4.5.0
+--------------
+- Opt-in Timed Mode per challenge, with a default duration in Settings
+- "Why this works" solution breakdown after solving (and on abandon/timeout)
+- Backup and restore: one JSON file for all progress
+- Certificate export to file
+- Quick Reset Progress action on the Dashboard
+- Theme system overhaul — ~160 hardcoded colors replaced with theme
+  variables, dead themes.yaml css: blocks removed, new default theme (Cyber)
+- Fixed two crash-on-launch-class bugs: invalid `margin: auto` in every
+  modal, and invalid `color: grey50` that silently killed achievement and
+  certificate popups
+- Fixed invisible button/nav text under Professional Light (a color was
+  used as both a button's fill and its own text color)
 
 NEW IN v4.3.0
 --------------
@@ -99,6 +119,7 @@ Challenges:
 
 VERDICT
 -------
-Full-featured learning platform with gamification, sandbox security,
-and 50 challenges across 5 difficulty levels. All planned features
-implemented. Add tests for production readiness.
+Full-featured learning platform with gamification, a genuinely non-executing
+grading model, and 50 challenges across 5 difficulty levels. Backup/restore
+and a real per-theme visual identity round out 4.5.0. Content volume
+(challenges, achievements) and the flat package layout remain open items.

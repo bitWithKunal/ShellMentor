@@ -12,7 +12,7 @@ Your commands are validated against reference solutions, never executed against 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Textual](https://img.shields.io/badge/TUI-Textual-5A5AFF)](https://github.com/Textualize/textual)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-4.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.5.0-blue.svg)](CHANGELOG.md)
 [![Zero subprocess](https://img.shields.io/badge/subprocess%20calls-0-brightgreen.svg)](#why-nothing-executes)
 
 **43 lessons · 14 tracks · 50 challenges · 10 missions · 31 achievements · 12 ranks · 7 themes**
@@ -103,7 +103,8 @@ commands correctly. Muscle memory for a live TTY still comes from a live TTY.
 
 ## Screenshots
 
-> Captured from ShellMentor v4.4.0 on Linux.
+> Captured from ShellMentor v4.4.0 on Linux — predates 4.5.0's theme overhaul, so
+> current colors will look different from these.
 
 <table>
 <tr>
@@ -278,12 +279,12 @@ that shadows a Textual internal — both of which shipped as crashes before v4.4
 |---|---|---|---|
 | 📚 | **Lessons** | `Ctrl+L` | 43 lessons across 14 tracks — theory, syntax, worked sections, common mistakes, best practices, exercises, and a closing quiz. Position is saved, so you can resume mid-lesson. |
 | 🧪 | **Command Lab** | `Ctrl+G` | Free-form practice over 12 real workspace datasets. Autocomplete across 43 commands, pipeline templates, file previews, command history, session recording, and a diff viewer for comparing two attempts. |
-| 🎯 | **Challenges** | `Ctrl+H` | 50 scored exercises — beginner (11), intermediate (13), advanced (11), expert (9), master (6). Progressive hints, a first-attempt bonus, and a timer. Failed attempts are recorded, so analytics reflect reality. |
+| 🎯 | **Challenges** | `Ctrl+H` | 50 scored exercises — beginner (11), intermediate (13), advanced (11), expert (9), master (6). Progressive hints, a first-attempt bonus, and an opt-in **Timed Mode** with a configurable countdown. Solving one shows a stage-by-stage "why this works" breakdown of the reference pipeline, not just the raw command. Failed attempts are recorded, so analytics reflect reality. |
 | 🚀 | **Missions** | `Ctrl+M` | 10 role-framed scenarios of 4–5 stages each. Every stage is validated against its own reference solution before the next unlocks. |
 | 🏆 | **Achievements** | `Ctrl+A` | 31 badges — common (5), uncommon (9), rare (12), epic (1), legendary (4). Every badge evaluates a real condition against your stats. |
 | 📝 | **Notes** | `Ctrl+N` | Searchable personal notepad with export. Deliberately preserved across a progress reset. |
 | 📊 | **Analytics** | `Ctrl+R` | Solve rates by difficulty, most-used commands, lessons per track, session time, and difficulty suggestions derived from your attempt history. |
-| ⚙️ | **Settings** | `Ctrl+T` | Username, theme picker (7 themes), environment scan for optional CLI tools, portfolio export, and progress reset. |
+| ⚙️ | **Settings** | `Ctrl+T` | Username, theme picker (7 themes, fully re-skins the app), default Timed Mode duration, one-file JSON **backup and restore** of all progress, portfolio export, and progress reset — also available as a quick action from the Dashboard. |
 
 Plus **Git Space** (`Ctrl+U`) — a guided reference for `init`, `status`, `add`,
 `commit`, `push`, `pull`, and `log`, pointed at a repository path you choose. In keeping
@@ -523,6 +524,16 @@ Thirteen tables, migrated forward on open:
 | `meta` | Schema version and migration state |
 
 Content JSON is read-only at runtime. Nothing in `data/` is written during a session.
+
+### Backup and restore
+
+**Settings → Export Backup (JSON)** dumps every table above (except `meta`) into one
+timestamped file under `~/ShellMentor_Exports/`. **Settings → Import Backup** reads a
+path to that file back in, wiping and replacing local data after a confirmation —
+useful for moving progress to a new machine or recovering from a bad reset. Column
+names from the file are checked against the live schema before use, the same
+allow-list approach the data layer already used for `update_user()`, so a hand-edited
+backup can't smuggle arbitrary SQL through a crafted key.
 
 ---
 
@@ -873,6 +884,19 @@ Every pull request must pass CI on all four supported Python versions.
 
 ## Roadmap
 
+**Shipped in 4.5.0** — see [CHANGELOG.md](CHANGELOG.md) for the full list.
+
+- Opt-in **Timed Mode** for any challenge, with a default duration set in Settings
+- A "why this works" pipeline breakdown shown after solving a challenge, not just the
+  raw reference command
+- One-file JSON **backup and restore** of all progress from Settings
+- Lesson certificates can now be saved to a file, not just viewed once
+- The theme system actually re-skins the whole app now — every screen's CSS reads the
+  active theme's colors instead of a fixed palette, and each theme gets a real accent,
+  secondary, and background instead of only the sidebar responding to it
+- Fixed two crash-on-launch bugs (`margin: auto` and `color: grey50` are not valid
+  Textual CSS) that could take down modals including the achievement popup
+
 **Shipped in 4.4.0** — see [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 Every fix below was reproduced before it was changed.
@@ -923,7 +947,7 @@ Released under the [MIT License](LICENSE). Copyright © 2026 Kunal Saraswat.
   author  = {Saraswat, Kunal},
   year    = {2026},
   url     = {https://github.com/bitWithKunal/ShellMentor},
-  version = {4.4.0}
+  version = {4.5.0}
 }
 ```
 

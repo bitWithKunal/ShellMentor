@@ -11,6 +11,7 @@ that crept in when everything lived in one giant file.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from textual import on
 from textual.app import ComposeResult
@@ -20,7 +21,7 @@ from textual.screen import Screen, ModalScreen
 from textual.widgets import Button, Footer, Header, Rule, Static
 
 from progress import LevelUpEvent
-from utils import rarity_color
+from utils import rarity_color, safe_export_filename
 
 logger = logging.getLogger("shellmentor")
 
@@ -36,35 +37,39 @@ class NavButton(Button):
         height: 3;
         margin: 0;
         padding: 0 2;
-        background: #0e1117;
+        background: $surface;
+        color: $text-muted;
         border: none;
+        border-left: wide $surface;
         text-style: bold;
     }
     NavButton:hover {
-        background: #1e2030;
+        background: $panel;
+        color: $text;
+        border-left: wide $secondary;
     }
     NavButton.-active {
-        background: #1e3a5f;
-        color: #89b4fa;
-        border-left: solid #89b4fa;
+        background: $panel;
+        color: $primary;
+        border-left: wide $primary;
     }
     """
 
 class NavigationSidebar(Vertical):
     """Professional navigation sidebar."""
-    
+
     DEFAULT_CSS = """
     NavigationSidebar {
         width: 28;
-        background: #0e1117;
-        border-right: solid #1e2030;
+        background: $primary 10%;
+        border-right: heavy $secondary;
         padding: 1 0;
     }
     .sidebar-header {
         padding: 0 2;
         margin-bottom: 1;
         text-style: bold;
-        color: #89b4fa;
+        color: $accent;
     }
     .nav-spacer {
         height: 0;
@@ -73,13 +78,14 @@ class NavigationSidebar(Vertical):
         width: 100%;
         height: 3;
         margin: 0;
-        background: #0e1117;
-        border: solid #1e3a5f;
-        color: #89b4fa;
+        background: $surface;
+        border: solid $primary-darken-1;
+        color: $primary;
         text-style: bold;
     }
     .nav-home-btn:hover {
-        background: #1e3a5f;
+        background: $primary;
+        color: auto;
     }
     """
     
@@ -223,11 +229,10 @@ class LevelUpModal(ModalScreen):
 
     DEFAULT_CSS = """
     LevelUpModal > Container {
-        background: #0e1117;
-        border: double #89b4fa;
+        background: $surface;
+        border: double $primary;
         width: 50;
         height: 16;
-        margin: auto;
         padding: 1 2;
         content-align: center middle;
     }
@@ -268,18 +273,17 @@ class AchievementModal(ModalScreen):
 
     DEFAULT_CSS = """
     AchievementModal > Container {
-        background: #0e1117;
+        background: $surface;
         border: solid gold;
         width: 50;
         height: 14;
-        margin: auto;
         padding: 1 2;
     }
     #ach-header { color: gold; text-style: bold; }
     #ach-title  { color: cyan; text-style: bold; }
-    #ach-desc   { color: #cdd6f4; }
+    #ach-desc   { color: $text; }
     #ach-xp     { color: gold; }
-    #ach-hint   { color: grey50; }
+    #ach-hint   { color: $text-muted; }
     """
 
     def action_dismiss(self) -> None:
@@ -306,15 +310,14 @@ class HintModal(ModalScreen):
 
     DEFAULT_CSS = """
     HintModal > Container {
-        background: #0e1117;
+        background: $surface;
         border: solid yellow;
         width: 55;
         height: 12;
-        margin: auto;
         padding: 1 2;
     }
     #hint-title { color: yellow; text-style: bold; }
-    #hint-text  { color: #cdd6f4; }
+    #hint-text  { color: $text; }
     #hint-ok    { margin: 1 0 0 0; }
     """
 
@@ -337,10 +340,12 @@ class ConfirmModal(ModalScreen):
 
     def compose(self) -> ComposeResult:
         yield Container(
-            Static(f"\n  {self.message}\n"),
+            Static("⚠  PLEASE CONFIRM", id="confirm-title"),
+            Rule(),
+            Static(self.message, id="confirm-message"),
             Horizontal(
-                Button("Yes", id="yes", variant="primary"),
-                Button("No",  id="no",  variant="default"),
+                Button("Yes, continue", id="yes", variant="error"),
+                Button("Cancel", id="no", variant="default"),
                 id="confirm-buttons",
             ),
             id="confirm-container",
@@ -348,15 +353,28 @@ class ConfirmModal(ModalScreen):
 
     DEFAULT_CSS = """
     ConfirmModal > Container {
-        background: #0e1117;
-        border: solid #89b4fa;
-        width: 50;
-        height: 10;
-        margin: auto;
+        background: $surface;
+        border: thick $warning;
+        width: 60;
+        height: auto;
+        max-width: 90%;
         padding: 1 2;
     }
-    #confirm-buttons { height: 3; margin-top: 1; }
-    Button { margin-right: 1; }
+    #confirm-title {
+        color: $warning;
+        text-style: bold;
+    }
+    #confirm-message {
+        color: $text;
+        padding: 1 0;
+        width: 100%;
+    }
+    #confirm-buttons {
+        height: 3;
+        margin-top: 1;
+        align: right middle;
+    }
+    #confirm-buttons Button { margin-left: 1; margin-right: 0; }
     """
 
     @on(Button.Pressed, "#yes")
@@ -384,9 +402,8 @@ class CertificateModal(ModalScreen):
         self.xp = xp
 
     def compose(self) -> ComposeResult:
-        from datetime import datetime
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        grade = "A" if self.score >= 90 else "B" if self.score >= 80 else "C"
+        now = self._issued_at().strftime("%Y-%m-%d %H:%M")
+        grade = self._grade()
         yield Container(
             Static("CERTIFICATE OF COMPLETION", id="cert-header"),
             Rule(),
@@ -396,28 +413,66 @@ class CertificateModal(ModalScreen):
             Static(f"\n  XP Earned: +{self.xp}  |  Date: {now}", id="cert-xp"),
             Rule(),
             Static(f"\n  ShellMentor — Professional Linux Learning Platform", id="cert-footer"),
-            Static("\n  Press ENTER to continue", id="cert-hint"),
+            Horizontal(
+                Button("💾  Save to File", id="cert-save", variant="primary"),
+                Button("Continue", id="cert-continue", variant="default"),
+                id="cert-buttons",
+            ),
             id="cert-container",
         )
 
     DEFAULT_CSS = """
     CertificateModal > Container {
-        background: #0e1117;
+        background: $surface;
         border: double gold;
         width: 58;
-        height: 18;
-        margin: auto;
+        height: 20;
         padding: 1 2;
     }
     #cert-header { color: gold; text-style: bold; text-align: center; }
-    #cert-body1  { color: #cdd6f4; }
+    #cert-body1  { color: $text; }
     #cert-title  { color: cyan; text-style: bold; }
     #cert-score  { color: green; }
     #cert-xp     { color: gold; }
-    #cert-footer { color: grey50; text-align: center; }
-    #cert-hint   { text-align: center; }
+    #cert-footer { color: $text-muted; text-align: center; }
+    #cert-buttons { align: center middle; height: 3; margin-top: 1; }
     """
+
+    def _issued_at(self):
+        from datetime import datetime
+        return datetime.now()
+
+    def _grade(self) -> str:
+        return "A" if self.score >= 90 else "B" if self.score >= 80 else "C"
 
     def action_dismiss(self) -> None:
         self.dismiss()
+
+    @on(Button.Pressed, "#cert-continue")
+    def continue_pressed(self) -> None:
+        self.dismiss()
+
+    @on(Button.Pressed, "#cert-save")
+    def save_to_file(self) -> None:
+        now = self._issued_at()
+        text = (
+            "==============================================\n"
+            "          CERTIFICATE OF COMPLETION\n"
+            "==============================================\n\n"
+            f"This certifies that the learner has successfully completed\n\n"
+            f"    {self.lesson_title}\n\n"
+            f"Track:      {self.track_id}\n"
+            f"Score:      {self.score}%\n"
+            f"Grade:      {self._grade()}\n"
+            f"XP Earned:  +{self.xp}\n"
+            f"Date:       {now.strftime('%Y-%m-%d %H:%M')}\n\n"
+            "ShellMentor — Professional Linux Command-Line Learning Platform\n"
+        )
+        export_dir = Path.home() / "ShellMentor_Exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        safe = safe_export_filename(self.lesson_title, default="lesson")
+        stamp = now.strftime("%Y%m%d_%H%M%S")
+        path = export_dir / f"certificate_{safe}_{stamp}.txt"
+        path.write_text(text, encoding="utf-8")
+        self.app.show_notification(f"Certificate saved: {path}", severity="information")
 

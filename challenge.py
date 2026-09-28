@@ -139,11 +139,17 @@ class ChallengeEngine:
 
     # ── Challenge Session ─────────────────────────────────────
 
-    def start_challenge(self, challenge_id: str) -> ActiveChallenge | None:
+    def start_challenge(
+        self, challenge_id: str, time_limit_override: int | None = None,
+    ) -> ActiveChallenge | None:
+        """Start a challenge. *time_limit_override*, when given, replaces the
+        challenge's own time_limit — this is how the UI's opt-in Timed Mode
+        toggle applies a countdown to a challenge that has none configured
+        (or removes one, by passing 0)."""
         ch = self.get_challenge(challenge_id)
         if not ch:
             return None
-        time_limit = ch.get("time_limit", 0)
+        time_limit = ch.get("time_limit", 0) if time_limit_override is None else time_limit_override
         self._active = ActiveChallenge(challenge=ch, time_limit=time_limit)
         return self._active
 

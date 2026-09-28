@@ -2,6 +2,83 @@
 
 All notable changes are documented here.
 
+## 4.5.0
+
+Feature release: opt-in timed challenges, backup/restore, solution explanations, and a
+theme system that actually re-skins the whole app — plus two more crash-on-launch bugs
+of the same shape as 4.4.0's.
+
+### Added
+- **Timed Mode** for challenges: an opt-in countdown you choose per attempt from the
+  Challenges browser, with a default duration set in Settings → Challenge Preferences.
+  Previously a challenge could only be timed if the content author had set a
+  `time_limit` in `challenges.json`, and none of the 50 shipped challenges do.
+- **"Why this works"** — after solving a challenge (or on abandon/timeout), the
+  reference solution is broken into pipeline stages with a plain-language description
+  of each tool, built from the Command Lab's own help data. Purely textual; nothing is
+  executed to produce it.
+- **Backup and restore**: Settings → Export Backup (JSON) dumps every progress table to
+  one file under `~/ShellMentor_Exports/`; Import Backup restores from it after a
+  confirmation. Column names from the file are checked against the live schema before
+  use, so a hand-edited backup can't inject SQL through a crafted key.
+- Lesson certificates can be saved to a text file from the certificate modal, not just
+  viewed once and dismissed.
+- A **Reset Progress** shortcut on the Dashboard itself, next to the stats it affects,
+  in addition to the one in Settings.
+
+### Changed — theming
+- The theme system now actually reaches the whole app. Previously, `main.py`'s app-wide
+  CSS and every screen's `DEFAULT_CSS` used fixed hex colors, so switching themes in
+  Settings only changed a handful of widgets that happened to already reference
+  Textual's own default variables. All ~160 hardcoded colors across `main.py`,
+  `ui_core.py`, `ui_screens.py` and `ui_activities.py` now read theme variables
+  (`$primary`, `$surface`, `$border`, `$text-muted`, ...), so all 7 themes are now
+  visually distinct end to end.
+- Removed the `css:` block from every theme in `themes/themes.yaml` — confirmed dead in
+  the 4.4.0 review (`build_themes()` never read it) and now genuinely superseded by the
+  variable-driven CSS above.
+- New default theme: **Cyber** (neon magenta/cyan/yellow), replacing Professional Dark
+  for fresh installs. Existing users keep whatever theme they already chose.
+- Section and screen headers (Settings' six sections, Challenges, Missions, Lessons,
+  Notes, Achievements, Analytics, Git Space) now use distinct accent colors instead of
+  every header being the same cyan.
+- Sidebars, the header/footer bar, and panel borders now carry a tinted background and
+  a heavier colored edge instead of a flat neutral fill.
+
+### Fixed
+- **App failed to launch**: `margin: auto` is not valid Textual CSS (it wants an
+  explicit `1`/`2`/`4`-value margin) but was present in all five modals
+  (`LevelUpModal`, `AchievementModal`, `HintModal`, `ConfirmModal`, `CertificateModal`).
+  Textual validates a class's `DEFAULT_CSS` the first time that class is instantiated,
+  and apparently also during startup in a real terminal run, so this could crash the
+  app before the dashboard ever appeared. Centering already came from the app-wide
+  `ModalScreen { align: center middle; }` rule, so the invalid declarations were both
+  wrong and redundant — removed.
+- **Achievement and certificate popups silently failed**: `color: grey50;` is valid in
+  Rich's text markup but not in Textual's CSS color grammar (Textual suggested `grey`).
+  This was in `AchievementModal`/`CertificateModal`'s `DEFAULT_CSS`, so earning an
+  achievement or hitting a note that would print that footer text raised a
+  `StylesheetErrors` that the achievement callback's `except Exception` swallowed —
+  the modal just never appeared, with no visible error. Confirmed via a regression
+  in the mission-completion test, which had been silently relying on this modal
+  never actually rendering.
+- **Invisible button/nav text under Professional Light**: `Button.-primary` and the
+  active sidebar item used `$primary-background` as a background with `$primary` as
+  the text color. Under Professional Light those two resolve to the *same* hex value —
+  text identical to its own background. Every variant button now uses `$panel` (proven
+  distinct from every accent in all 7 themes) at rest, and `color: auto` on hover so
+  hover text stays readable against Cyber/Matrix's very light, saturated accents too.
+- The Command Lab's `get_command_help()` table only covered 5 commands; expanded to
+  ~28, since the new "why this works" breakdown depends on it for lesser-used tools.
+
+### Tests
+- `test_core.py`: `safe_export_filename`, `split_pipeline`, `explain_pipeline`, the
+  Timed Mode override, and a full backup/export/import round trip.
+- `test_ui_smoke.py`: the Timed Mode toggle end to end (switch → duration → active
+  challenge's `time_limit`), and the Dashboard's own Reset Progress button. The mission
+  regression test now dismisses an achievement modal instead of mistaking it for the
+  mission screen having ended — which is what silently masked the `grey50` bug above.
+
 ## 4.4.0
 
 Bug-fix and correctness release. Every item below was reproduced before it was

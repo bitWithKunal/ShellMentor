@@ -383,5 +383,105 @@ MIGRATION
 2. Add ruff to CI to keep unused imports and dead code from returning (#43).
 3. Decide the fate of the unused theme `css:` blocks (#40) — either consume
    them in build_themes() or delete them.
+   [RESOLVED IN 4.5.0] Deleted. See #45 below — the live CSS now reads
+   theme variables directly, which is what these blocks always should have
+   fed and never did.
 4. Widen UI test coverage to the lesson and quiz flows, which currently have
    unit coverage of their engines but no pilot-level test.
+
+
+------------------------------------------------------------------------
+8. ADDENDUM — 4.5.0 FEATURE RELEASE
+------------------------------------------------------------------------
+Reviewed:  2026-09-29   (against 4.4.0, while adding Timed Mode, solution
+           explanations, backup/restore, certificate export, and a theme
+           system overhaul)
+Method:    same as section 0-6 — static read plus headless runtime testing
+           with Textual's App.run_test() pilot, this time also exporting
+           SVG screenshots and inspecting the real generated Theme color
+           system to verify claims about what a theme actually renders,
+           since colour correctness can't be judged from source alone.
+
+[BLOCKER] #45 [FIXED] `margin: auto` is not valid Textual CSS (it wants an
+          explicit 1/2/4-value margin) but was present in all five modals:
+          LevelUpModal, AchievementModal, HintModal, ConfirmModal,
+          CertificateModal. Reproduced directly against the installed
+          textual==8.2.8: `Stylesheet.add_source(...); .parse()` raises
+          StylesheetErrors. Textual validates a class's DEFAULT_CSS the
+          first time that class is used, and evidently also earlier in a
+          real terminal run than in this project's headless pilot tests —
+          a live run crashed with "CSS parsing failed" immediately after
+          "Starting ShellMentor ...", before the dashboard ever appeared,
+          while the existing test_ui_smoke.py suite (which never happens
+          to trigger any of these five modals) stayed green throughout.
+  FIX: removed `margin: auto` from all five — centering already came from
+  the app-wide `ModalScreen { align: center middle; }` rule, so the
+  declarations were both invalid and redundant.
+  LESSON: a passing headless UI-test suite does not prove every screen's
+  CSS is valid; only screens the suite actually pushes get their CSS
+  compiled. Modals reached solely through gameplay side effects (an
+  achievement firing, a confirm dialog) are exactly the gap.
+
+[HIGH] #46  [FIXED] `color: grey50;` is valid in Rich's text-markup color
+          grammar but not in Textual's CSS color grammar (Textual's own
+          parser suggests 'grey' instead). Present in AchievementModal and
+          CertificateModal's DEFAULT_CSS. Earning an achievement — or
+          reaching the certificate footer's styled text — raised a
+          StylesheetErrors that ProgressEngine's achievement-callback
+          `except Exception` swallowed with a one-line log message, so the
+          modal simply never appeared. No user-visible error at all.
+  Verified before: completing a mission stage that unlocks an achievement
+  advanced game state (XP, DB rows) correctly but the modal never rendered;
+  test_mission_counts_one_completion_and_rejects_junk's loop mistook the
+  achievement modal never appearing for "the mission had not yet ended" and
+  happened to keep passing by accident, since it looped strictly by
+  identity-checking `app.screen`.
+  FIX: `color: $text-muted` in both modals. Also hardened the regression
+  test itself to dismiss any ModalScreen that appears mid-mission (like a
+  user pressing Enter) instead of assuming a screen change means the
+  mission ended — this is what will actually catch a repeat of #45/#46 in
+  CI going forward, since the test now depends on the modal successfully
+  appearing rather than tolerating its absence.
+
+[HIGH] #47  [FIXED] Invisible button and nav-item text under Professional
+          Light. `Button.-primary` and the active sidebar item used
+          `$primary-background` as their fill with `$primary` as the text
+          color. Verified via `Theme.to_color_system().generate()`:
+          professional_light's `primary` and `primary-background` resolve
+          to the exact same hex (#0969DA) — text identical to its own
+          background. Six other themes did not exhibit this (their
+          `-background`/`-muted` variants were reliably distinct from the
+          base color), which is presumably why it went unnoticed during
+          the theme system's initial build-out.
+  FIX: every Button variant (`-primary`/`-success`/`-warning`/`-error`) now
+  rests on `$panel` — confirmed distinct from every accent color across all
+  7 themes — with the accent used only for text/border, and switches to a
+  solid accent fill with `color: auto` (Textual's contrast-auto-pick) on
+  hover, rather than a hardcoded `white` that would itself wash out against
+  Matrix's/Cyber's very light, saturated accents.
+
+[MED]  #48  [FIXED] The theme system was mostly decorative. `main.py`'s
+          app-wide CSS and every screen's DEFAULT_CSS used fixed hex colors
+          (~160 occurrences across 4 files), so `Settings -> Apply Theme`
+          only visibly changed the few widgets that happened to already use
+          Textual's own default variables. Meanwhile themes.yaml carried a
+          `css:` block per theme that `build_themes()` never read at all
+          (recorded as dead in #40, WON'T FIX at the time).
+  FIX: replaced every hardcoded hex value in main.py/ui_core.py/
+  ui_screens.py/ui_activities.py with the corresponding theme variable
+  ($primary, $surface, $border, $text-muted, ...) and deleted the dead
+  `css:` blocks from themes.yaml. All 7 themes are now visually distinct
+  end to end, verified by comparing `Theme.to_color_system().generate()`
+  output across themes rather than by eye.
+
+VERIFICATION LOG FOR 4.5.0
+  python -m pytest -q ............................ 20 passed
+      test_core.py           13 tests (6 pre-existing + 7 new)
+      test_ui_smoke.py        7 tests (5 pre-existing + 2 new)
+  python -m compileall -q main.py ui_core.py ui_screens.py
+      ui_activities.py data_manager.py ......... clean
+  Direct Stylesheet.parse() checks for `margin: auto` / `color: grey50` /
+      `background: <color> <alpha>%` ........... confirms exact failure
+  Theme.to_color_system().generate() diffed across all 7 themes to confirm
+      primary/secondary/accent/panel/surface are genuinely distinct per
+      theme, not just per source declaration

@@ -8,12 +8,13 @@ from __future__ import annotations
 import difflib
 import json
 import logging
+import shlex
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-from utils import PracticeResult, WORKSPACE_DIR, SUPPORTED_COMMANDS
+from utils import PracticeResult, WORKSPACE_DIR, SUPPORTED_COMMANDS, split_pipeline
 from data_manager import DataManager
 
 logger = logging.getLogger("shellmentor")
@@ -103,6 +104,190 @@ DATASET_FILES = [
     "syslog.log",
     "timing.rpt",
 ]
+
+COMMAND_HELP: dict[str, dict] = {
+    "grep": {
+        "description": "Search for patterns in text",
+        "common_flags": [
+            ("-n", "Show line numbers"),
+            ("-i", "Case-insensitive"),
+            ("-r", "Recursive"),
+            ("-c", "Count matches"),
+            ("-v", "Invert match"),
+            ("-E", "Extended regex"),
+            ("-o", "Only matching part"),
+            ("-A N", "N lines after match"),
+            ("-B N", "N lines before match"),
+            ("-C N", "N lines context"),
+        ],
+    },
+    "sed": {
+        "description": "Stream editor for text transformation",
+        "common_flags": [
+            ("s/OLD/NEW/g", "Global substitution"),
+            ("-n '/PAT/p'", "Print matching lines"),
+            ("'/PAT/d'", "Delete matching lines"),
+            ("-n '5,10p'", "Print line range"),
+            ("-i", "Edit file in-place"),
+            ("-E", "Extended regex"),
+        ],
+    },
+    "awk": {
+        "description": "Pattern-action text processor",
+        "common_flags": [
+            ("-F','", "Set field separator"),
+            ("'{print $1}'", "Print first field"),
+            ("'NR>1'", "Skip first line"),
+            ("'/PAT/{action}'", "Pattern matching"),
+            ("'BEGIN{}'", "Run before input"),
+            ("'END{}'", "Run after input"),
+        ],
+    },
+    "sort": {
+        "description": "Sort lines of text",
+        "common_flags": [
+            ("-n", "Numeric sort"),
+            ("-r", "Reverse sort"),
+            ("-u", "Unique (remove dups)"),
+            ("-t','", "Field separator"),
+            ("-k2", "Sort by field 2"),
+        ],
+    },
+    "uniq": {
+        "description": "Report or filter repeated lines",
+        "common_flags": [
+            ("-c", "Count occurrences"),
+            ("-d", "Only duplicates"),
+            ("-u", "Only unique"),
+            ("-i", "Case-insensitive"),
+        ],
+    },
+    "cut": {
+        "description": "Extract sections from each line",
+        "common_flags": [
+            ("-d','", "Field delimiter"),
+            ("-f2", "Select field 2"),
+            ("-c1-5", "Select character range"),
+        ],
+    },
+    "tr": {
+        "description": "Translate or delete characters",
+        "common_flags": [
+            ("-d", "Delete characters"),
+            ("-s", "Squeeze repeats"),
+            ("'[:upper:]' '[:lower:]'", "Lowercase text"),
+        ],
+    },
+    "wc": {
+        "description": "Count lines, words and bytes",
+        "common_flags": [
+            ("-l", "Count lines"),
+            ("-w", "Count words"),
+            ("-c", "Count bytes"),
+        ],
+    },
+    "head": {
+        "description": "Print the first lines of input",
+        "common_flags": [("-n N", "First N lines")],
+    },
+    "tail": {
+        "description": "Print the last lines of input",
+        "common_flags": [("-n N", "Last N lines"), ("-f", "Follow appended data")],
+    },
+    "cat": {
+        "description": "Concatenate and print file contents",
+        "common_flags": [("-n", "Number output lines")],
+    },
+    "tac": {
+        "description": "Print a file's lines in reverse order",
+        "common_flags": [],
+    },
+    "find": {
+        "description": "Search a directory tree for files",
+        "common_flags": [
+            ("-name PAT", "Match by filename"),
+            ("-type f", "Files only"),
+            ("-mtime -N", "Modified in last N days"),
+        ],
+    },
+    "xargs": {
+        "description": "Build and run commands from standard input",
+        "common_flags": [("-n N", "N arguments per command"), ("-I{}", "Placeholder substitution")],
+    },
+    "join": {
+        "description": "Join lines of two sorted files on a common field",
+        "common_flags": [("-t','", "Field delimiter"), ("-1 N", "Join field of file 1")],
+    },
+    "paste": {
+        "description": "Merge lines of files side by side",
+        "common_flags": [("-d','", "Output delimiter")],
+    },
+    "comm": {
+        "description": "Compare two sorted files line by line",
+        "common_flags": [("-12", "Suppress unique lines from both")],
+    },
+    "column": {
+        "description": "Format input into aligned columns",
+        "common_flags": [("-t", "Create a table")],
+    },
+    "ls": {
+        "description": "List directory contents",
+        "common_flags": [("-la", "Long listing, including hidden files")],
+    },
+    "ps": {
+        "description": "Report a snapshot of running processes",
+        "common_flags": [("aux", "All processes, full detail")],
+    },
+    "du": {
+        "description": "Estimate file and directory space usage",
+        "common_flags": [("-sh", "Human-readable total for a directory")],
+    },
+    "df": {
+        "description": "Report filesystem disk space usage",
+        "common_flags": [("-h", "Human-readable sizes")],
+    },
+    "echo": {
+        "description": "Print text to standard output",
+        "common_flags": [("-e", "Interpret backslash escapes")],
+    },
+    "printf": {
+        "description": "Format and print text",
+        "common_flags": [],
+    },
+    "curl": {
+        "description": "Transfer data from or to a server",
+        "common_flags": [("-s", "Silent mode"), ("-I", "Headers only")],
+    },
+    "dig": {
+        "description": "Query DNS name servers",
+        "common_flags": [("+short", "Terse output")],
+    },
+    "ping": {
+        "description": "Test network reachability of a host",
+        "common_flags": [("-c N", "Send N packets and stop")],
+    },
+    "ss": {
+        "description": "Investigate network sockets",
+        "common_flags": [("-tuln", "Listening TCP/UDP sockets")],
+    },
+    "crontab": {
+        "description": "Maintain scheduled (cron) jobs for a user",
+        "common_flags": [("-l", "List the current crontab")],
+    },
+    "uname": {
+        "description": "Print system information",
+        "common_flags": [("-a", "All available information")],
+    },
+    "chmod": {
+        "description": "Change file access permissions",
+        "common_flags": [("+x", "Make executable")],
+    },
+    "diff": {
+        "description": "Compare two files line by line",
+        "common_flags": [("-u", "Unified diff format")],
+    },
+}
+
 
 PIPELINE_TEMPLATES = [
     {
@@ -346,68 +531,31 @@ class PlaygroundEngine:
 
     def get_command_help(self, command: str) -> dict:
         """Return quick help for a command."""
-        help_data = {
-            "grep": {
-                "description": "Search for patterns in text",
-                "common_flags": [
-                    ("-n", "Show line numbers"),
-                    ("-i", "Case-insensitive"),
-                    ("-r", "Recursive"),
-                    ("-c", "Count matches"),
-                    ("-v", "Invert match"),
-                    ("-E", "Extended regex"),
-                    ("-o", "Only matching part"),
-                    ("-A N", "N lines after match"),
-                    ("-B N", "N lines before match"),
-                    ("-C N", "N lines context"),
-                ],
-            },
-            "sed": {
-                "description": "Stream editor for text transformation",
-                "common_flags": [
-                    ("s/OLD/NEW/g", "Global substitution"),
-                    ("-n '/PAT/p'", "Print matching lines"),
-                    ("'/PAT/d'", "Delete matching lines"),
-                    ("-n '5,10p'", "Print line range"),
-                    ("-i", "Edit file in-place"),
-                    ("-E", "Extended regex"),
-                ],
-            },
-            "awk": {
-                "description": "Pattern-action text processor",
-                "common_flags": [
-                    ("-F','", "Set field separator"),
-                    ("'{print $1}'", "Print first field"),
-                    ("'NR>1'", "Skip first line"),
-                    ("'/PAT/{action}'", "Pattern matching"),
-                    ("'BEGIN{}'", "Run before input"),
-                    ("'END{}'", "Run after input"),
-                ],
-            },
-            "sort": {
-                "description": "Sort lines of text",
-                "common_flags": [
-                    ("-n", "Numeric sort"),
-                    ("-r", "Reverse sort"),
-                    ("-u", "Unique (remove dups)"),
-                    ("-t','", "Field separator"),
-                    ("-k2", "Sort by field 2"),
-                ],
-            },
-            "uniq": {
-                "description": "Report or filter repeated lines",
-                "common_flags": [
-                    ("-c", "Count occurrences"),
-                    ("-d", "Only duplicates"),
-                    ("-u", "Only unique"),
-                    ("-i", "Case-insensitive"),
-                ],
-            },
-        }
-        return help_data.get(command.lower(), {
+        return COMMAND_HELP.get(command.lower(), {
             "description": f"Linux command: {command}",
             "common_flags": [],
         })
+
+    def explain_pipeline(self, command: str) -> list[dict]:
+        """Break a (possibly piped) command into a plain-language, stage-by-
+        stage explanation — purely textual, built from COMMAND_HELP, never
+        executed. Used to show *why* a reference solution works, not just
+        what it is."""
+        explanation = []
+        for idx, stage in enumerate(split_pipeline(command), start=1):
+            try:
+                tokens = shlex.split(stage)
+            except ValueError:
+                tokens = stage.split()
+            base = tokens[0] if tokens else ""
+            help_info = self.get_command_help(base) if base else {"description": ""}
+            explanation.append({
+                "stage": idx,
+                "command": stage,
+                "tool": base,
+                "description": help_info.get("description", ""),
+            })
+        return explanation
 
     # ── Pipeline Templates ────────────────────────────────────
 

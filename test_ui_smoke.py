@@ -96,6 +96,7 @@ def test_challenge_screen_opens_and_scores_a_solution(tmp_path: Path):
 
 def test_mission_counts_one_completion_and_rejects_junk(tmp_path: Path):
     """Regression: every stage bumped missions_completed, and any text passed."""
+    from textual.screen import ModalScreen
     from ui_activities import MissionScreen
 
     app = _make_app(tmp_path)
@@ -123,9 +124,81 @@ def test_mission_counts_one_completion_and_rejects_junk(tmp_path: Path):
                 screen.next_stage()
                 await pilot.pause()
                 await asyncio.sleep(0.2)
+                # A stage can earn an achievement, which pushes a modal (e.g.
+                # AchievementModal) on top of the mission screen — dismiss it
+                # like a user pressing Enter, rather than mistaking it for
+                # the mission itself having ended.
+                while app.screen is not screen and isinstance(app.screen, ModalScreen):
+                    await pilot.press("enter")
+                    await pilot.pause()
+                    await asyncio.sleep(0.1)
 
             assert app._exception is None, repr(app._exception)
             assert app.db.get_progress()["missions_completed"] == 1
+
+    _run(scenario())
+
+
+def test_timed_mode_toggle_starts_challenge_with_countdown(tmp_path: Path):
+    """The Challenges browser's Timed Mode switch should force a countdown
+    even though none of the shipped challenges carry their own time_limit."""
+    from textual.widgets import Select, Switch
+    from ui_activities import ChallengesScreen, ChallengeScreen
+
+    app = _make_app(tmp_path)
+
+    async def scenario():
+        async with app.run_test(size=(120, 40)) as pilot:
+            await pilot.pause()
+            app.push_screen(ChallengesScreen())
+            await pilot.pause()
+            await asyncio.sleep(0.2)
+            assert app._exception is None, repr(app._exception)
+
+            challenge = app.challenge_engine._challenges_data[0]
+            app._selected_challenge = challenge["id"]
+            screen = app.screen
+            screen.query_one("#ch-timed-switch", Switch).value = True
+            screen.query_one("#ch-timed-duration", Select).value = 120
+            screen.start_challenge()
+            await pilot.pause()
+            await asyncio.sleep(0.2)
+            assert app._exception is None, repr(app._exception)
+
+            assert isinstance(app.screen, ChallengeScreen)
+            assert app.challenge_engine.active_challenge.time_limit == 120
+
+    _run(scenario())
+
+
+def test_dashboard_reset_button_clears_progress(tmp_path: Path):
+    """The dashboard's own Reset Progress button (next to the stats grid)
+    should work exactly like the one in Settings, behind the same confirm."""
+    from ui_core import ConfirmModal
+
+    app = _make_app(tmp_path)
+
+    async def scenario():
+        async with app.run_test(size=(120, 40)) as pilot:
+            await pilot.pause()
+            app.db.add_xp(500)
+            assert app.db.get_user()["xp"] == 500
+
+            app.action_go_dashboard()
+            await pilot.pause()
+            await asyncio.sleep(0.2)
+            assert app._exception is None, repr(app._exception)
+
+            screen = app.screen
+            screen.query_one("#dash-reset-progress")  # button must exist
+            screen.reset_progress_from_dashboard()
+            await pilot.pause()
+            assert isinstance(app.screen, ConfirmModal)
+            app.screen.dismiss(True)
+            await pilot.pause()
+            await asyncio.sleep(0.2)
+            assert app._exception is None, repr(app._exception)
+            assert app.db.get_user()["xp"] == 0
 
     _run(scenario())
 

@@ -1,78 +1,95 @@
-ShellMentor v4.4.0 — What Has Been Done
+ShellMentor v4.5.0 — What Has Been Done
 ==========================================
 Professional Linux Command-Line Learning Platform
-Reviewed: July 2026 | 12 Python files | ~6,800 lines
+Reviewed: September 2026 | 14 Python files | ~8,000 lines
 
 MODULE BREAKDOWN
 ----------------
 
-main.py (697 lines)
-  App entry point. Theme registry from YAML, OS username detection,
-  session time tracking (30s flush), keyboard bindings (Ctrl+L/G/H/M/A/N/R/S/D/P/Q),
+main.py (750 lines)
+  App entry point. Theme registry from YAML (now feeding real Textual CSS
+  variables, not just a handful of widgets), OS username detection,
+  session time tracking (30s flush), keyboard bindings (Ctrl+L/G/H/M/A/N/R/T/D/U/P/Q),
   command palette with search. Clean lifecycle: DB close + time flush on quit.
   Engine init order: DataManager -> LearningEngine -> ProgressEngine ->
   ChallengeEngine (with progress_engine) -> PlaygroundEngine.
 
-ui_core.py (502 lines)
+ui_core.py (478 lines)
   Shared foundation. BaseScreen template (sidebar + header + footer + render_content()).
-  NavButton, XPBar, StatCard, SectionHeader widgets. Five modals: LevelUp, Achievement,
-  Hint, Confirm, Certificate.
+  NavButton, NavigationSidebar widgets. Five modals: LevelUp, Achievement,
+  Hint, Confirm (redesigned: header, wrapping, auto-height, right-aligned
+  buttons), Certificate (now with a "Save to File" button).
 
-ui_screens.py (~1,800 lines)
+ui_screens.py (1,977 lines)
   8 screens. DashboardScreen: ASCII logo, animated progress bar, streak indicators,
-  timer leak fix. LessonsScreen: track/lesson browser with difficulty indicators and
-  bookmark stars, section viewer, exercises, quizzes, estimated time remaining,
-  resume prompt. PlaygroundScreen: terminal, file browser, pipeline templates.
-  NotesScreen: search/edit/save with proper export directory. AnalyticsScreen:
-  bar charts, weekly activity, challenge performance, level progress.
-  SettingsScreen: theme selector (live preview), portfolio export, About section,
-  keyboard shortcuts. EnvScanScreen: first-run system detection. Certificate
-  modal on high-score completion.
+  a top action bar with a quick Reset Progress button. LessonsScreen: track/lesson
+  browser with difficulty indicators and bookmark stars, section viewer, exercises,
+  quizzes, estimated time remaining, resume prompt. PlaygroundScreen: terminal, file
+  browser, pipeline templates. NotesScreen: search/edit/save with proper export
+  directory. AnalyticsScreen: bar charts, weekly activity, challenge performance,
+  level progress. SettingsScreen: theme selector (live preview), default Timed Mode
+  duration, backup export/import, portfolio export, About section, keyboard
+  shortcuts. EnvScanScreen: first-run system detection.
 
-ui_activities.py (~862 lines)
-  ChallengesScreen: difficulty filter with auto-suggestion. ChallengeScreen solver
-  with countdown timer, retry button, solution display on abandon/timeout,
-  confirmation dialog before abandon. MissionsScreen: async stage progress,
-  MissionScreen runner. AchievementsScreen: rarity grouped with async rendering.
+ui_activities.py (910 lines)
+  ChallengesScreen: difficulty filter with auto-suggestion, a Timed Mode switch +
+  duration picker before starting. ChallengeScreen solver with countdown timer,
+  retry button, a "why this works" pipeline breakdown after solving (and on
+  abandon/timeout), confirmation dialog before abandon. MissionsScreen: async
+  stage progress, MissionScreen runner. AchievementsScreen: rarity grouped with
+  async rendering.
 
-learning.py (477 lines)
+learning.py (476 lines)
   Track/lesson engine with difficulty-aware track stats (avg difficulty + icons).
   QuizSession with scoring. Exercise validation: output regex + shlex token overlap.
   Bookmark toggle, resume from saved position, estimated time remaining.
   Command translator: 7 task categories. Regex visualizer. Full-text search.
 
-challenge.py (345 lines)
-  Challenge validation. XP formula: base * hint_factor * speed_factor * attempt_factor
-  * streak_factor (+5% per streak, capped at +50%). Streak tracking (increment on solve,
-  reset on abandon). Difficulty suggestion (80%/30% threshold). Solution returned on
-  abandon. Time limit support with auto-expiry. Mission mode with stage progression.
+challenge.py (394 lines)
+  Challenge validation. `start_challenge(id, time_limit_override=...)` lets the UI's
+  opt-in Timed Mode force a countdown independent of the challenge's own data. XP
+  formula: base * hint_factor * speed_factor * attempt_factor * streak_factor
+  (+5% per streak, capped at +50%). Streak tracking (increment on solve, reset on
+  abandon). Difficulty suggestion (80%/30% threshold). Mission mode with stage
+  progression.
 
-playground.py (479 lines)
-  Command execution wrapper. Autocomplete: 50+ templates. 8 pipeline templates.
-  Session recording/export. Diff viewer. Command help.
+playground.py (641 lines)
+  Command recording wrapper (never executes). Autocomplete: 50+ templates. 8
+  pipeline templates. `explain_pipeline()` splits a command on unquoted `|` and
+  describes each stage from an expanded ~28-command help table — the basis for
+  challenges' "why this works" breakdown. Session recording/export. Diff viewer.
 
-progress.py (311 lines)
+progress.py (321 lines)
   Gamification coordinator. XP events with callbacks. Achievement evaluation:
   compound AND/OR triggers without eval(). 12-level ranking. Portfolio generation.
 
-data_manager.py (~830 lines)
-  SQLite with WAL journaling. 11 tables. Level computation (12 thresholds).
+data_manager.py (1,114 lines)
+  SQLite with WAL journaling. 13 tables. Level computation (12 thresholds).
   Streak tracking (daily + challenge streak). Achievement trigger evaluator.
   Note search. Enhanced analytics summary with weekly activity, challenge
   performance, average/best solve times. Lesson position save/resume.
-  Bookmark toggle. Certificate issuance. Reset progress preserves theme.
+  Bookmark toggle. Certificate issuance. `export_backup()`/`import_backup()`
+  round-trip every progress table to/from one JSON file, with column names
+  checked against the live schema before use. Reset progress preserves theme.
 
-utils.py (618 lines)
-  SystemInfo detection. SandboxEngine: 50+ blocked commands, 17 blocked patterns,
-  process group killing on timeout. Package manager detection. Text utilities.
-  /dev/null redirect allowed via negative lookahead.
+utils.py (484 lines)
+  SystemInfo detection. Package manager detection. Text utilities —
+  `safe_export_filename()` (shared by notes, certificates and backups) and
+  `split_pipeline()` (quote-aware `|` splitting, used by explain_pipeline()).
+  No execution helpers of any kind: nothing in this codebase ever calls
+  subprocess, os.system, eval or exec on a learner's input.
 
-sandbox.py (463 lines)
-  EnhancedSandbox, SessionRecording, VirtualFilesystem, OutputDiffer. (Unused)
+test_core.py (171 lines)
+  13 tests: non-execution guarantee, command recording, output validation,
+  challenge answer structure, level computation, XP formatting,
+  safe_export_filename, split_pipeline, explain_pipeline, Timed Mode
+  override, backup export/import round trip, bad-backup rejection.
 
-test_core.py (70 lines)
-  6 basic tests: sandbox blocking, safe commands, line count, empty output,
-  level computation, XP formatting.
+test_ui_smoke.py (221 lines)
+  7 headless-pilot tests: every screen mounts, analytics renders for a new
+  user, a challenge screen scores a solution, Timed Mode forces a
+  countdown, a mission counts one completion and rejects junk, achievement
+  rows render, the Dashboard's own Reset Progress button works.
 
 DATA FILES
 ----------
@@ -116,3 +133,31 @@ v4.4.0 IMPROVEMENTS
 11. Added confirmation dialog before challenge abandon
 12. Updated all_missions_complete threshold from 6 to 10
 13. Added new boolean triggers for shell_scripting and networking tracks
+
+v4.5.0 IMPROVEMENTS
+--------------------
+14. Added opt-in Timed Mode per challenge (switch + duration picker), with
+    a default duration set in Settings -> Challenge Preferences
+15. Added "why this works" pipeline explanations after solving a challenge
+    (and on abandon/timeout) via PlaygroundEngine.explain_pipeline()
+16. Expanded Command Lab help data from 5 to ~28 commands to back the
+    explanation breakdown
+17. Added one-file JSON backup and restore of all progress in Settings
+18. Added certificate export to file (Save to File button on the modal)
+19. Added a quick Reset Progress action on the Dashboard itself
+20. Theme system overhaul: replaced ~160 hardcoded colors across
+    main.py/ui_core.py/ui_screens.py/ui_activities.py with theme
+    variables, so all 7 themes are now visually distinct end to end
+21. Removed themes.yaml's dead css: blocks (never read by build_themes())
+22. New default theme: Cyber. Diversified header colors per screen/section
+23. Fixed app-breaking crash: margin: auto (invalid Textual CSS) in all 5
+    modals — Textual validates a class's DEFAULT_CSS on first use, and
+    this could crash the whole app before the dashboard ever appeared
+24. Fixed silent failure: color: grey50 (valid in Rich markup, not in
+    Textual CSS) in Achievement/Certificate modals meant those popups
+    never rendered — swallowed by the achievement callback's exception
+    handler, with no visible error
+25. Fixed invisible button/nav-item text under Professional Light: primary
+    buttons used $primary-background as their fill with $primary as the
+    text color, and those two are identical under that theme
+26. Added 8 new unit/UI tests covering all of the above
